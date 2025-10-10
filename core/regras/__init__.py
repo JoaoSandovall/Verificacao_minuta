@@ -1,0 +1,16 @@
+from .regras_cabecalho import auditar_cabecalho_ministerio, auditar_epigrafe, auditar_ementa
+from .regras_corpo import auditar_considerando, auditar_numeracao_artigos, auditar_pontuacao_incisos, auditar_uso_siglas
+from .regras_rodape import auditar_assinatura, auditar_fecho_vigencia
+
+# Dicionário central com todas as auditorias disponíveis na aplicação
+TODAS_AS_AUDITORIAS = {
+    "Brasão / Nome do Ministério": auditar_cabecalho_ministerio,
+    "Epígrafe (Formato e Data)": auditar_epigrafe,
+    "Ementa (Verbo Inicial)": auditar_ementa,
+    "Seção CONSIDERANDO": auditar_considerando,
+    "Artigos (Numeração)": auditar_numeracao_artigos,
+    "Incisos (Pontuação)": auditar_pontuacao_incisos,
+    "Siglas (Uso do travessão)": auditar_uso_siglas,
+    "Bloco de Assinatura": auditar_assinatura,
+    "Fecho de Vigência": auditar_fecho_vigencia,
+}
