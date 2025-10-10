@@ -1,11 +1,9 @@
-# app.py
-
 import streamlit as st
 import docx
 import PyPDF2
 from io import BytesIO
 
-# Importa o dicionário central de auditorias da nossa nova estrutura
+# Importa o dicionário central de auditorias da nossa estrutura organizada
 from core.regras import TODAS_AS_AUDITORIAS
 
 def extrair_texto(arquivo_enviado):
@@ -28,8 +26,26 @@ def extrair_texto(arquivo_enviado):
 
 # --- Interface Gráfica (Front-end) ---
 st.set_page_config(page_title="Auditor de Minutas", layout="wide")
-st.title("🔎 Auditor de Minutas de Resolução")
-st.write("Envie um arquivo (.txt, .docx ou .pdf) para análise de conformidade com o checklist.")
+
+# --- BARRA LATERAL COM O FILTRO DE REGRAS ---
+with st.sidebar:
+    st.header("⚙️ Filtro de Regras")
+    st.write("Selecione as regras que você deseja avaliar:")
+    
+    # Pega a lista de nomes de todas as regras disponíveis
+    lista_de_regras = list(TODAS_AS_AUDITORIAS.keys())
+    
+    # Cria o widget de multiseleção. Por padrão, todas as regras vêm selecionadas.
+    regras_selecionadas = st.multiselect(
+        "Regras de Auditoria:",
+        options=lista_de_regras,
+        default=lista_de_regras,
+        label_visibility="collapsed"
+    )
+
+# --- CONTEÚDO PRINCIPAL DA PÁGINA ---
+st.title("🔎 Revisão de Minutas de Resolução")
+st.write("Envie um arquivo (.txt, .docx ou .pdf) para análise conforme com o checklist.")
 
 arquivo_anexado = st.file_uploader(
     "Anexe a minuta aqui:",
@@ -38,38 +54,44 @@ arquivo_anexado = st.file_uploader(
 
 if arquivo_anexado:
     if st.button("Analisar Arquivo", type="primary", use_container_width=True):
-        with st.spinner("Realizando auditoria..."):
-            texto_minuta = extrair_texto(arquivo_anexado)
-            if texto_minuta:
-                resultados_ok = []
-                resultados_falha = []
+        if not regras_selecionadas:
+            st.warning("Por favor, selecione pelo menos uma regra na barra lateral para fazer a análise.")
+        else:
+            with st.spinner("Realizando auditoria..."):
+                texto_minuta = extrair_texto(arquivo_anexado)
+                if texto_minuta:
+                    resultados_ok = []
+                    resultados_falha = []
 
-                # O loop continua o mesmo, mas agora usa o dicionário importado
-                for nome, funcao_auditoria in TODAS_AS_AUDITORIAS.items():
-                    resultado = funcao_auditoria(texto_minuta)
-                    if resultado["status"] == "FALHA":
-                        resultados_falha.append((nome, resultado["detalhe"]))
-                    else:
-                        resultados_ok.append(nome)
-                
-                st.divider()
-                st.subheader("Resultado da Auditoria")
-                col_erros, col_corretos = st.columns(2)
+                    # Itera sobre todas as auditorias disponíveis
+                    for nome_regra, funcao_auditoria in TODAS_AS_AUDITORIAS.items():
+                        # >>> A MÁGICA ACONTECE AQUI <<<
+                        # Só executa a auditoria se o nome da regra estiver na lista de selecionadas
+                        if nome_regra in regras_selecionadas:
+                            resultado = funcao_auditoria(texto_minuta)
+                            if resultado["status"] == "FALHA":
+                                resultados_falha.append((nome_regra, resultado["detalhe"]))
+                            else:
+                                resultados_ok.append(nome_regra)
+                    
+                    st.divider()
+                    st.subheader("Resultado da Auditoria")
+                    col_erros, col_corretos = st.columns(2)
 
-                with col_erros:
-                    st.markdown("##### 👎 Itens com Erros:")
-                    if not resultados_falha:
-                        st.info("Nenhum erro encontrado.")
-                    else:
-                        for nome, detalhes in resultados_falha:
-                            st.error(f"**{nome}**", icon="❌")
-                            for erro in detalhes:
-                                st.write(f"&nbsp;&nbsp;&nbsp;&nbsp;- {erro}")
+                    with col_erros:
+                        st.markdown("##### 👎 Itens com Erros:")
+                        if not resultados_falha:
+                            st.info("Nenhum erro encontrado nas regras selecionadas.")
+                        else:
+                            for nome, detalhes in resultados_falha:
+                                st.error(f"**{nome}**", icon="❌")
+                                for erro in detalhes:
+                                    st.write(f"&nbsp;&nbsp;&nbsp;&nbsp;- {erro}")
 
-                with col_corretos:
-                    st.markdown("##### 👍 Itens Corretos:")
-                    if not resultados_ok:
-                        st.info("Nenhum item verificado passou na auditoria.")
-                    else:
-                        for nome in resultados_ok:
-                            st.success(f"**{nome}**", icon="✅")
+                    with col_corretos:
+                        st.markdown("##### 👍 Itens Corretos:")
+                        if not resultados_ok:
+                            st.info("Nenhum item verificado passou na auditoria.")
+                        else:
+                            for nome in resultados_ok:
+                                st.success(f"**{nome}**", icon="✅")
