@@ -1,7 +1,5 @@
 import re
 
-# Substitua a função auditar_preambulo antiga por esta versão simplificada:
-
 def auditar_preambulo(texto_completo):
     """
     Verifica a formatação do Preâmbulo, focando na autoridade ('O PRESIDENTE...')
