@@ -1,5 +1,3 @@
-# core/regras/__init__.py
-
 from .regras_cabecalho import auditar_cabecalho_ministerio, auditar_epigrafe, auditar_ementa
 from .regras_corpo import auditar_preambulo, auditar_numeracao_artigos, auditar_pontuacao_incisos, auditar_uso_siglas, auditar_pontuacao_alineas
 from .regras_rodape import auditar_assinatura, auditar_fecho_vigencia
