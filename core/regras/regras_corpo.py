@@ -47,23 +47,60 @@ def auditar_preambulo(texto_completo):
         return {"status": "FALHA", "detalhe": erros}
 
 def auditar_numeracao_artigos(texto_completo):
-    """Verifica se artigos 1º a 9º usam ordinal (º) e se 10 em diante usam cardinal (sem º)."""
+    """
+    Verifica a numeração e o espaçamento dos artigos com regras mais rígidas.
+    - Art. 1º a 9º: Deve ser 'Art. N°  ' (com º e dois espaços).
+    - Art. 10 em diante: Deve ser 'Art. NN.  ' (com . e dois espaços).
+    """
     erros = []
-    # Procura por Art. 1-9 sem o 'º'
-    padrao_A = r'(Art\. [1-9])(?![º\s])'
-    for match in re.finditer(padrao_A, texto_completo):
-        erros.append(f"O artigo '{match.group(1)}' deve usar o indicador ordinal 'º' (ex: Art. 1º, Art. 9º).")
     
-    # Procura por Art. 10+ com o 'º'
-    padrao_B = r'(Art\. \d{2,})º'
-    for match in re.finditer(padrao_B, texto_completo):
-        erros.append(f"O artigo '{match.group(1)}º' não deve usar o indicador ordinal 'º' (ex: Art. 10, Art. 25).")
-        
-    if not erros:
-        return {"status": "OK", "detalhe": "A numeração dos artigos (ordinais e cardinais) está correta."}
-    else:
-        return {"status": "FALHA", "detalhe": erros}
+    # Encontra todas as ocorrências de "Art. [número]" para análise individual
+    matches = re.finditer(r'Art\.\s*(\d+)', texto_completo)
 
+    for match in matches:
+        numero_artigo_str = match.group(1)
+        numero_artigo = int(numero_artigo_str)
+        
+        # Pega a fatia do texto original logo após o match para verificar pontuação e espaços
+        pos_fim_match = match.end()
+        trecho_apos_artigo = texto_completo[pos_fim_match : pos_fim_match + 3]
+
+        # --- VALIDAÇÃO PARA ARTIGOS DE 1 A 9 ---
+        if 1 <= numero_artigo <= 9:
+            padrao_esperado = "º  "
+    
+            if not trecho_apos_artigo.startswith(padrao_esperado):
+                # Análise do erro específico
+                if trecho_apos_artigo.startswith('°'):
+                    erros.append(f"No 'Art. {numero_artigo}', o símbolo ordinal está incorreto. Use 'º' em vez de '°'.")
+                elif not trecho_apos_artigo.startswith('º'):
+                    erros.append(f"O 'Art. {numero_artigo}' deve ser seguido pelo ordinal 'º'.")
+                elif not trecho_apos_artigo.startswith('º  '):
+                    erros.append(f"Após 'Art. {numero_artigo}º', deve haver exatamente dois espaços.")
+                else:
+                     erros.append(f"A formatação após 'Art. {numero_artigo}' está incorreta. Esperado: 'º' seguido de dois espaços.")
+
+        # --- VALIDAÇÃO PARA ARTIGOS 10 EM DIANTE ---
+        elif numero_artigo >= 10:
+            padrao_esperado = ".  "
+            
+            if not trecho_apos_artigo.startswith(padrao_esperado):
+                # Análise do erro específico
+                if trecho_apos_artigo.startswith('º'):
+                    erros.append(f"O 'Art. {numero_artigo}' não deve usar o ordinal 'º', mas sim um ponto final (.).")
+                elif not trecho_apos_artigo.startswith('.'):
+                    erros.append(f"O 'Art. {numero_artigo}' deve ser seguido por um ponto final (.).")
+                elif not trecho_apos_artigo.startswith('.  '):
+                     erros.append(f"Após 'Art. {numero_artigo}.', deve haver exatamente dois espaços.")
+                else: # Outros erros de formatação
+                    erros.append(f"A formatação após 'Art. {numero_artigo}' está incorreta. Esperado: '.' seguido de dois espaços.")
+
+    if not erros:
+        return {"status": "OK", "detalhe": "A numeração e espaçamento dos artigos estão corretos."}
+    else:
+        # Usa list(set(erros)) para remover mensagens de erro duplicadas
+        return {"status": "FALHA", "detalhe": list(set(erros))[:5]}
+    
 def auditar_pontuacao_incisos(texto_completo):
     """Verifica a pontuação de Incisos (I, II, ...), se eles existirem."""
     erros = []
@@ -108,3 +145,40 @@ def auditar_uso_siglas(texto_completo):
         return {"status": "OK", "detalhe": "A formatação das siglas está correta."}
     else:
         return {"status": "FALHA", "detalhe": erros}
+    
+# Adicione esta nova função ao final do arquivo core/regras/regras_corpo.py
+
+def auditar_pontuacao_alineas(texto_completo):
+    """Verifica a pontuação das Alíneas (a, b, c...), se elas existirem."""
+    erros = []
+    
+    # Encontra todos os blocos de alíneas no texto
+    # (procura por múltiplas linhas que começam com 'letra)')
+    blocos_alineas = re.finditer(r'((?:\n\s*[a-z]\).*?)+)', texto_completo)
+    
+    for bloco in blocos_alineas:
+        # Pega todas as alíneas dentro de um bloco
+        alineas = re.findall(r'(\n\s*[a-z]\).*)', bloco.group(1))
+        
+        if len(alineas) < 2:
+            continue
+
+        num_alineas = len(alineas)
+        for i, alinea in enumerate(alineas):
+            alinea_limpa = alinea.strip()
+            e_ultima = (i == num_alineas - 1)
+            
+            # Regra 1: A última alínea deve terminar com ponto final.
+            if e_ultima:
+                if not alinea_limpa.endswith('.'):
+                    erros.append(f"A última alínea do bloco ('{alinea_limpa[:30]}...') deve terminar com ponto final (.).")
+            # Regra 2: As alíneas intermediárias devem terminar com ponto e vírgula.
+            else:
+                if not alinea_limpa.endswith(';'):
+                    erros.append(f"A alínea intermediária ('{alinea_limpa[:30]}...') deve terminar com ponto e vírgula (;).")
+
+    if not erros:
+        return {"status": "OK", "detalhe": "A pontuação das alíneas (a, b, c...) está correta."}
+    else:
+        # Retorna apenas os 3 primeiros erros para não poluir a interface
+        return {"status": "FALHA", "detalhe": erros[:3]}
