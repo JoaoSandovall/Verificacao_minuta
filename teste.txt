@@ -1,0 +1,214 @@
+import streamlit as st
+import docx
+import PyPDF2
+import pandas as pd
+from io import BytesIO
+import re
+
+# Importa o dicionário central de auditorias
+from core.regras import TODAS_AS_AUDITORIAS
+# Importamos a função específica do anexo
+from core.regras.regras_anexo import auditar_anexo
+
+def extrair_texto(arquivo_enviado):
+    """Extrai texto de diferentes tipos de arquivo."""
+    try:
+        if arquivo_enviado.type == "text/plain":
+            return arquivo_enviado.read().decode("utf-8")
+        elif arquivo_enviado.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            doc = docx.Document(BytesIO(arquivo_enviado.read()))
+            return "\n".join([para.text for para in doc.paragraphs])
+        elif arquivo_enviado.type == "application/pdf":
+            texto = ""
+            leitor_pdf = PyPDF2.PdfReader(BytesIO(arquivo_enviado.read()))
+            for pagina in leitor_pdf.pages:
+                texto += pagina.extract_text() + "\n"
+            return texto
+    except Exception as e:
+        st.error(f"Erro ao processar o arquivo: {e}")
+        return None
+
+def executar_auditoria(texto_para_auditar, regras_selecionadas):
+    """Executa um conjunto de regras de auditoria em um bloco de texto."""
+    resultados_ok = []
+    resultados_falha = []
+    if not texto_para_auditar:
+        return [], []
+    for nome_regra, funcao_auditoria in TODAS_AS_AUDITORIAS.items():
+        if nome_regra in regras_selecionadas:
+            if nome_regra == "Anexo":
+                continue
+                
+            resultado = funcao_auditoria(texto_para_auditar)
+            if resultado["status"] == "FALHA":
+                resultados_falha.append((nome_regra, resultado["detalhe"]))
+            else:
+                resultados_ok.append((nome_regra, resultado.get("detalhe", "")))
+    return resultados_ok, resultados_falha
+
+def exibir_resultados(titulo, resultados_ok, resultados_falha):
+    """Cria as duas colunas e exibe os resultados de uma auditoria."""
+    st.subheader(titulo)
+    col_erros, col_corretos = st.columns(2)
+    with col_erros:
+        st.markdown("##### 👎 Itens com Erros:")
+        if not resultados_falha:
+            st.info("Nenhum erro encontrado.")
+        else:
+            for nome, detalhes in resultados_falha:
+                st.error(f"**{nome}**", icon="❌")
+                for erro in detalhes:
+                    st.write(f"&nbsp;&nbsp;&nbsp;&nbsp;- {erro}")
+    with col_corretos:
+        st.markdown("##### 👍 Itens Corretos:")
+        if not resultados_ok:
+            st.info("Nenhum item verificado passou na auditoria.")
+        else:
+            for nome, detalhe in resultados_ok:
+                st.success(f"**{nome}**", icon="✅")
+                if detalhe and isinstance(detalhe, str) and detalhe.startswith("Aviso:"):
+                    st.warning(f"&nbsp;&nbsp;&nbsp;&nbsp;{detalhe}")
+                elif detalhe:
+                    st.caption(f"&nbsp;&nbsp;&nbsp;&nbsp;{detalhe}")
+
+
+def limpar_caixa_texto():
+    if "texto_colado_input" in st.session_state:
+        st.session_state.texto_colado_input = ""
+
+# --- Interface Gráfica (Front-end) ---
+st.set_page_config(page_title="Auditor de Minutas", layout="wide")
+
+lista_de_regras = list(TODAS_AS_AUDITORIAS.keys())
+regras_selecionadas = lista_de_regras
+
+tab_texto, tab_arquivo = st.tabs(["Colar Texto", "Anexar Arquivo"])
+
+# --- ABA 1: COLAR TEXTO ---
+with tab_texto:
+    st.write("Copie e cole o texto completo da minuta na caixa abaixo para análise.")
+    
+    texto_colado = st.text_area(
+        "Texto da Minuta:", 
+        height=300, 
+        label_visibility="collapsed",
+        key="texto_colado_input"
+    )
+    
+    col_analisar, col_limpar = st.columns([4, 1]) 
+
+    with col_analisar:
+        botao_analisar_clicado = st.button(
+            "Analisar Texto", 
+            type="primary", 
+            use_container_width=True, 
+            key="btn_analisar_texto"
+        )
+    
+    with col_limpar:
+        st.button(
+            "Limpar", 
+            use_container_width=True, 
+            key="btn_limpar_texto",
+            on_click=limpar_caixa_texto 
+        )
+
+    if botao_analisar_clicado:
+        if not texto_colado:
+            st.warning("Por favor, cole um texto na caixa acima para fazer a análise.")
+        else:
+            with st.spinner("Realizando auditoria do texto..."):
+                texto_completo = texto_colado
+                texto_completo = re.sub(r'\*?\s*MINUTA DE DOCUMENTO', '', texto_completo, flags=re.IGNORECASE)
+                
+                # --- LÓGICA DO ANEXO ATUALIZADA (ABA DE TEXTO) ---
+                
+                # 1. Executamos a regra do Anexo no texto COMPLETO
+                resultado_anexo = auditar_anexo(texto_completo)
+                
+                # 2. Dividimos o texto
+                texto_resolucao = texto_completo
+                texto_anexo = None
+                
+                # O divisor agora procura EXATAMENTE a linha "ANEXO" (maiúsculas)
+                # Não usamos IGNORECASE aqui, pois a divisão só deve ocorrer
+                # se o formato estiver correto, conforme a nova regra.
+                match_anexo = re.search(r'\n\s*(ANEXO)\s*(?=\n|$)', texto_completo)
+                
+                if match_anexo:
+                    texto_resolucao = texto_completo[:match_anexo.start()]
+                    # Usamos .end() para pegar o texto DEPOIS da linha "ANEXO"
+                    # .strip() remove as quebras de linha entre "ANEXO" e "CAPÍTULO I"
+                    texto_anexo = texto_completo[match_anexo.end():].strip() 
+                
+                # 3. Executamos o resto das regras na Resolução (já dividida)
+                ok_res, falha_res = executar_auditoria(texto_resolucao, regras_selecionadas)
+                
+                # 4. Adicionamos o resultado da regra do Anexo manualmente
+                if resultado_anexo["status"] == "FALHA":
+                    falha_res.append(("Anexo", resultado_anexo["detalhe"]))
+                else:
+                    ok_res.append(("Anexo", resultado_anexo.get("detalhe", "")))
+                
+                # 5. Exibimos os resultados da Resolução
+                st.divider()
+                exibir_resultados("Resultado da Resolução Principal", ok_res, falha_res)
+                
+                # 6. Exibimos os resultados do Anexo (se existir)
+                st.divider()
+                if texto_anexo:
+                    regras_para_anexo = ["Artigos (Numeração)", "Incisos (Pontuação)", "Alíneas (Pontuação)", "Siglas (Uso do travessão)"]
+                    regras_a_rodar_no_anexo = [regra for regra in regras_para_anexo if regra in regras_selecionadas]
+                    ok_anexo, falha_anexo = executar_auditoria(texto_anexo, regras_a_rodar_no_anexo)
+                    exibir_resultados("Resultado do Anexo", ok_anexo, falha_anexo)
+                # --- FIM DA LÓGICA ATUALIZADA ---
+
+# --- ABA 2: UPLOAD DE ARQUIVO ---
+with tab_arquivo:
+    st.write("Envie um arquivo (.txt, .docx ou .pdf) para análise de conformidade.")
+    arquivo_anexo = st.file_uploader("Anexe a minuta aqui:", type=['txt', 'docx', 'pdf'], label_visibility="collapsed")
+    if arquivo_anexo:
+        if st.button("Analisar Arquivo", type="primary", use_container_width=True, key="btn_analisar_arquivo"):
+            
+            with st.spinner("Realizando auditoria do arquivo..."):
+                texto_completo = extrair_texto(arquivo_anexado)
+                if texto_completo:
+                    texto_completo = re.sub('minuta de documento', '', texto_completo, flags=re.IGNORECASE)
+                    
+                    # --- LÓGICA DO ANEXO ATUALIZADA (ABA DE ARQUIVO) ---
+
+                    # 1. Executamos a regra do Anexo no texto COMPLETO
+                    resultado_anexo = auditar_anexo(texto_completo)
+
+                    # 2. Dividimos o texto
+                    texto_resolucao = texto_completo
+                    texto_anexo = None
+                    
+                    # O divisor agora procura EXATAMENTE a linha "ANEXO"
+                    match_anexo = re.search(r'\n\s*(ANEXO)\s*(?=\n|$)', texto_completo)
+                
+                    if match_anexo:
+                        texto_resolucao = texto_completo[:match_anexo.start()]
+                        texto_anexo = texto_completo[match_anexo.end():].strip()
+
+                    # 3. Executamos o resto das regras na Resolução (já dividida)
+                    ok_res, falha_res = executar_auditoria(texto_resolucao, regras_selecionadas)
+
+                    # 4. Adicionamos o resultado da regra do Anexo manualmente
+                    if resultado_anexo["status"] == "FALHA":
+                        falha_res.append(("Anexo", resultado_anexo["detalhe"]))
+                    else:
+                        ok_res.append(("Anexo", resultado_anexo.get("detalhe", "")))
+                    
+                    # 5. Exibimos os resultados da Resolução
+                    st.divider()
+                    exibir_resultados("Resultado da Resolução Principal", ok_res, falha_res)
+                    
+                    # 6. Exibimos os resultados do Anexo (se existir)
+                    st.divider()
+                    if texto_anexo:
+                        regras_para_anexo = ["Artigos (Numeração)", "Incisos (Pontuação)", "Alíneas (Pontuação)", "Siglas (Uso do travessão)"]
+                        regras_a_rodar_no_anexo = [regra for regra in regras_para_anexo if regra in regras_selecionadas]
+                        ok_anexo, falha_anexo = executar_auditoria(texto_anexo, regras_a_rodar_no_anexo)
+                        exibir_resultados("Resultado do Anexo", ok_anexo, falha_anexo)
+                    # --- FIM DA LÓGICA ATUALIZADA ---

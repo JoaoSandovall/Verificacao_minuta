@@ -1,0 +1,241 @@
+import re
+
+def _roman_to_int(s):
+    """Função auxiliar para converter numerais romanos em inteiros."""
+    roman_map = {'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000}
+    result = 0
+    prev_value = 0
+    for char in reversed(s):
+        value = roman_map[char]
+        if value < prev_value:
+            result -= value
+        else:
+            result += value
+        prev_value = value
+    return result
+
+
+def auditar_preambulo(texto_completo):
+    """
+    Verifica a formatação do Preâmbulo, focando na autoridade específica
+    e na terminação com 'RESOLVE:'.
+    """
+    erros = []
+
+    try:
+        match_epigrafe = re.search(r".* DE \d{4}", texto_completo, re.IGNORECASE)
+        texto_apos_epigrafe = texto_completo[match_epigrafe.end():].strip()
+        
+        texto_limpo = re.sub(r'\*?\s*MINUTA DE DOCUMENTO\s*', '', texto_apos_epigrafe, flags=re.IGNORECASE).strip()
+
+        linhas_limpas = texto_limpo.split('\n')
+        inicio_preambulo_texto = ""
+        for i, linha in enumerate(linhas_limpas):
+            if linha.strip():
+                inicio_preambulo_texto = "\n".join(linhas_limpas[i+1:])
+                break
+        
+        match_artigo1 = re.search(r'Art\.\s*1[ºo]', inicio_preambulo_texto, re.IGNORECASE)
+        texto_preambulo = inicio_preambulo_texto[:match_artigo1.start()].strip()
+
+    except (AttributeError, IndexError):
+        return {"status": "FALHA", "detalhe": [{"mensagem": "Não foi possível isolar o texto do preâmbulo para análise. Verifique se a ementa e o Art. 1º existem.", "contexto": "N/A"}]}
+
+    if not texto_preambulo:
+        return {"status": "FALHA", "detalhe": [{"mensagem": "O texto do preâmbulo parece estar vazio.", "contexto": "N/A"}]}
+
+    autoridades_validas = [
+        "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DO CENTRO-OESTE - CONDEL/SUDECO",
+        "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DA AMAZÔNIA - CONDEL/SUDAM",
+        "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DO NORDESTE – CONDEL/SUDENE"
+    ]
+    
+    texto_preambulo_normalizado = re.sub(r'\s+', ' ', texto_preambulo)
+    autoridade_encontrada = False
+    for autoridade in autoridades_validas:
+        autoridade_normalizada = re.sub(r'\s+', ' ', autoridade)
+        if texto_preambulo_normalizado.upper().startswith(autoridade_normalizada.upper()):
+            autoridade_encontrada = True
+            break
+            
+    if not autoridade_encontrada:
+        contexto_erro = texto_preambulo.split('\n')[0].strip()
+        erros.append({"mensagem": "O Começo do preâmbulo está incorreto.", "contexto": contexto_erro})
+
+    ultima_linha = ""
+    linhas_preambulo = texto_preambulo.strip().split('\n')
+    if linhas_preambulo:
+        ultima_linha = linhas_preambulo[-1].strip()
+
+    # Corrigido para RESOLVE: (padrão dos documentos)
+    if ultima_linha != "RESOLVE:":
+        if ultima_linha.lower() == "resolve:":
+            erros.append({"mensagem": f"A palavra 'RESOLVE:' no final do preâmbulo deve estar em maiúsculas.", "contexto": ultima_linha})
+        else:
+            erros.append({"mensagem": f"O preâmbulo deve terminar com a palavra 'RESOLVE:'. Mas foi encontrado: '{ultima_linha}'", "contexto": ultima_linha})
+            
+    if not erros:
+        return {"status": "OK", "detalhe": "O preâmbulo está estruturado corretamente."}
+    else:
+        return {"status": "FALHA", "detalhe": erros}
+
+def auditar_numeracao_artigos(texto_completo):
+    """
+    Verifica a numeração e o espaçamento dos artigos com regras mais rígidas.
+    """
+    erros = []
+    
+    matches = re.finditer(r'Art\.\s*(\d+)', texto_completo)
+
+    for match in matches:
+        numero_artigo = int(match.group(1))
+        
+        pos_inicio_match = match.start()
+        pos_fim_linha = texto_completo.find('\n', pos_inicio_match)
+        contexto_linha = texto_completo[pos_inicio_match:pos_fim_linha if pos_fim_linha != -1 else len(texto_completo)].strip()
+        
+        pos_fim_match = match.end()
+        trecho_apos_artigo = texto_completo[pos_fim_match : pos_fim_match + 3]
+
+        if 1 <= numero_artigo <= 9:
+            padrao_esperado = "º  "
+            if not trecho_apos_artigo.startswith(padrao_esperado):
+                msg = ""
+                if trecho_apos_artigo.startswith('°'):
+                    msg = f"No 'Art. {numero_artigo}', o símbolo ordinal está incorreto. Use 'º' em vez de '°'."
+                elif not trecho_apos_artigo.startswith('º'):
+                    msg = f"O 'Art. {numero_artigo}' deve ser seguido pelo ordinal 'º'."
+                elif not trecho_apos_artigo.startswith('º  '):
+                    msg = f"Após 'Art. {numero_artigo}º', deve haver exatamente dois espaços."
+                else:
+                    msg = f"A formatação após 'Art. {numero_artigo}' está incorreta. Esperado: 'º' seguido de dois espaços."
+                erros.append({"mensagem": msg, "contexto": contexto_linha})
+
+        elif numero_artigo >= 10:
+            padrao_esperado = ".  "
+            if not trecho_apos_artigo.startswith(padrao_esperado):
+                msg = ""
+                if trecho_apos_artigo.startswith('º'):
+                    msg = f"O 'Art. {numero_artigo}' não deve usar o ordinal 'º', mas sim um ponto final (.)."
+                elif not trecho_apos_artigo.startswith('.'):
+                    msg = f"O 'Art. {numero_artigo}' deve ser seguido por um ponto final (.)."
+                elif not trecho_apos_artigo.startswith('.  '):
+                    msg = f"Após 'Art. {numero_artigo}.', deve haver exatamente dois espaços."
+                else:
+                    msg = f"A formatação após 'Art. {numero_artigo}' está incorreta. Esperado: '.' seguido de dois espaços."
+                erros.append({"mensagem": msg, "contexto": contexto_linha})
+
+    if not erros:
+        return {"status": "OK", "detalhe": "A numeração e espaçamento dos artigos estão corretos."}
+    else:
+        return {"status": "FALHA", "detalhe": list({v['mensagem']:v for v in erros}.values())[:5]}
+
+def auditar_pontuacao_incisos(texto_completo):
+    """Verifica a sequência e a pontuação de Incisos (I, II, ...)."""
+    erros = []
+    incisos = re.findall(r'(^[ \t]*[IVXLCDM]+[\s\-–].*?)(?=\n[ \t]*[IVXLCDM]+[\s\-–]|\Z)', texto_completo, re.MULTILINE | re.DOTALL)
+    
+    if not incisos:
+        return {"status": "OK", "detalhe": "Nenhum inciso (I, II, etc.) foi encontrado para análise."}
+    
+    num_incisos = len(incisos)
+    expected_numeral = 1
+
+    for i, inciso_texto in enumerate(incisos):
+        inciso_limpo = inciso_texto.strip()
+        numeral_romano_match = re.match(r'^\s*([IVXLCDM]+)', inciso_limpo)
+        if not numeral_romano_match:
+            continue
+        numeral_romano = numeral_romano_match.group(1)
+        
+        current_numeral = _roman_to_int(numeral_romano)
+        if current_numeral != expected_numeral:
+            erros.append({"mensagem": f"Sequência de incisos incorreta. Esperado inciso de valor {expected_numeral}, mas encontrado '{numeral_romano}'.", "contexto": inciso_limpo})
+        expected_numeral += 1
+
+        is_last = (i == num_incisos - 1)
+        is_penultimate = (i == num_incisos - 2)
+        tem_alineas = re.search(r':\s*\n\s*[a-z]\)', inciso_texto)
+        
+        if tem_alineas:
+            if not inciso_limpo.endswith(':'):
+                 erros.append({"mensagem": f"O Inciso {numeral_romano} precede alíneas e deve terminar com dois-pontos (:).", "contexto": inciso_limpo})
+            continue
+
+        if is_last:
+            if not inciso_limpo.endswith('.'):
+                erros.append({"mensagem": f"O último inciso (Inciso {numeral_romano}) deve terminar com ponto final (.).", "contexto": inciso_limpo})
+        elif is_penultimate:
+            if not inciso_limpo.endswith('; e'):
+                erros.append({"mensagem": f"O penúltimo inciso (Inciso {numeral_romano}) deve terminar com '; e'.", "contexto": inciso_limpo})
+        else:
+            if not inciso_limpo.endswith(';'):
+                erros.append({"mensagem": f"O inciso intermediário (Inciso {numeral_romano}) deve terminar com ponto e vírgula (;).", "contexto": inciso_limpo})
+
+    if not erros:
+        return {"status": "OK", "detalhe": "A sequência e pontuação dos incisos estão corretas."}
+    else:
+        return {"status": "FALHA", "detalhe": erros[:5]}
+
+def auditar_uso_siglas(texto_completo):
+    """Verifica se as siglas estão usando travessão ou se estão incorretamente em parênteses."""
+    erros = []
+    padrao_parenteses = r'\([A-Z]{2,}\)'
+    for match in re.finditer(padrao_parenteses, texto_completo):
+        contexto = match.group(0)
+        erros.append({"mensagem": f"A sigla '{contexto}' não deve estar entre parênteses. Use um travessão (–).", "contexto": contexto})
+    
+    if "Centro-Oeste FDCO" in texto_completo:
+        contexto = "Centro-Oeste FDCO"
+        erros.append({"mensagem": "A sigla 'FDCO' não está separada por travessão. O correto seria '...Centro-Oeste – FDCO'.", "contexto": contexto})
+        
+    if not erros:
+        return {"status": "OK", "detalhe": "A formatação das siglas está correta."}
+    else:
+        return {"status": "FALHA", "detalhe": erros}
+
+def auditar_pontuacao_alineas(texto_completo):
+    """Verifica a sequência e a pontuação das Alíneas (a, b, c...)."""
+    erros = []
+    
+    blocos_alineas = re.finditer(r'((?:\n\s*[a-z]\).*?)+)', texto_completo)
+    
+    found_any_block = False
+    for bloco in blocos_alineas:
+        found_any_block = True
+        alineas = re.findall(r'\n\s*([a-z])\)(.*)', bloco.group(1))
+        
+        if not alineas:
+            continue
+
+        num_alineas = len(alineas)
+        expected_char_ord = ord('a')
+
+        for i, (letra_alinea, texto_alinea) in enumerate(alineas):
+            alinea_limpa = f"{letra_alinea}) {texto_alinea.strip()}"
+            
+            current_char_ord = ord(letra_alinea)
+            if current_char_ord != expected_char_ord:
+                 erros.append({"mensagem": f"Sequência de alíneas incorreta. Esperado '{chr(expected_char_ord)})', mas encontrado '{letra_alinea})'.", "contexto": alinea_limpa})
+            expected_char_ord += 1
+
+            is_last = (i == num_alineas - 1)
+            is_penultimate = (i == num_alineas - 2)
+            
+            if is_last:
+                if not alinea_limpa.endswith('.'):
+                    erros.append({"mensagem": f"A última alínea ('{letra_alinea})') deve terminar com ponto final (.).", "contexto": alinea_limpa})
+            elif is_penultimate:
+                if not alinea_limpa.endswith('; e'):
+                     erros.append({"mensagem": f"A penúltima alínea ('{letra_alinea})') deve terminar com '; e'.", "contexto": alinea_limpa})
+            else:
+                if not alinea_limpa.endswith(';'):
+                    erros.append({"mensagem": f"A alínea intermediária ('{letra_alinea})') deve terminar com ponto e vírgula (;).", "contexto": alinea_limpa})
+
+    if not erros:
+        if found_any_block:
+            return {"status": "OK", "detalhe": "A sequência e pontuação das alíneas estão corretas."}
+        else:
+            return {"status": "OK", "detalhe": "Nenhuma alínea (a, b, c...) foi encontrada para análise."}
+    else:
+        return {"status": "FALHA", "detalhe": erros[:5]}

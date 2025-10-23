@@ -1,0 +1,56 @@
+import re
+
+def auditar_fecho_vigencia(texto_completo):
+    """Verifica se o documento possui uma cláusula de vigência padrão."""
+    PADRAO_VIGENCIA = r"entra em vigor (na data de sua publicação|no dia .*)"
+    texto_para_analise = texto_completo
+    
+    match_anexo = re.search(r'\n\s*ANEXO', texto_para_analise, re.IGNORECASE)
+    if match_anexo:
+        texto_para_analise = texto_para_analise[:match_anexo.start()]
+
+    match = re.search(PADRAO_VIGENCIA, texto_para_analise, re.IGNORECASE)
+    
+    if match:
+        return {"status": "OK", "detalhe": f"A cláusula de vigência foi encontrada: '{match.group(0)}'"}
+    else:
+        msg = "A cláusula de vigência padrão não foi encontrada antes da assinatura. Esperado: '...entra em vigor na data de sua publicação.' ou '...entra em vigor no dia [data].'"
+        return {"status": "FALHA", "detalhe": [{"mensagem": msg, "contexto": "Final do documento antes da assinatura."}]}
+
+def auditar_assinatura(texto_completo):
+    """Verifica se o bloco de assinatura segue o padrão (NOME EM MAIÚSCULAS / Cargo)."""
+    texto_para_analise = texto_completo
+    
+    match_anexo = re.search(r'\n\s*ANEXO', texto_para_analise, re.IGNORECASE)
+    if match_anexo:
+        texto_para_analise = texto_para_analise[:match_anexo.start()]
+
+    linhas = [linha.strip() for linha in texto_para_analise.strip().split('\n') if linha.strip()]
+    
+    if len(linhas) < 2:
+        return {"status": "FALHA", "detalhe": [{"mensagem": "Não foi possível encontrar um bloco de assinatura reconhecível.", "contexto": ""}]}
+    
+    ultimas_linhas = linhas[-4:]
+    try:
+        indice_nome = -1
+        for i, linha in enumerate(ultimas_linhas):
+            if linha.isupper() and len(linha.split()) > 1 and not linha.startswith('Art.'):
+                indice_nome = i
+                break
+        
+        if indice_nome == -1:
+            contexto = "\n".join(ultimas_linhas)
+            return {"status": "FALHA", "detalhe": [{"mensagem": "O nome do signatário em maiúsculas não foi encontrado no bloco de assinatura.", "contexto": contexto}]}
+        
+        linha_nome = ultimas_linhas[indice_nome]
+        linha_cargo = ultimas_linhas[indice_nome + 1]
+        contexto_bloco = f"{linha_nome}\n{linha_cargo}"
+        
+        if not linha_cargo or linha_cargo.isupper():
+            msg = f"O cargo abaixo do nome '{linha_nome}' não foi encontrado ou está incorretamente em maiúsculas."
+            return {"status": "FALHA", "detalhe": [{"mensagem": msg, "contexto": contexto_bloco}]}
+        
+        return {"status": "OK", "detalhe": "O bloco de assinatura está formatado corretamente."}
+    except IndexError:
+        contexto = "\n".join(ultimas_linhas)
+        return {"status": "FALHA", "detalhe": [{"mensagem": "A estrutura do bloco de assinatura parece inválida (nome sem cargo abaixo).", "contexto": contexto}]}

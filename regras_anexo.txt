@@ -1,0 +1,21 @@
+import re
+
+def auditar_anexo(texto_completo):
+    """
+    Verifica se a seção 'ANEXO' existe, se está em maiúsculas
+    e se está sozinha na linha.
+    """
+    
+    match_correto = re.search(r'\n\s*(ANEXO)\s*(?=\n|$)', texto_completo)
+    
+    if match_correto:
+         return {"status": "OK", "detalhe": "Seção 'ANEXO' encontrada e formatada corretamente."}
+
+    match_incorreto = re.search(r'\n\s*(ANEXO\b.*?)\s*(?=\n|$)', texto_completo, re.IGNORECASE)
+
+    if match_incorreto:
+        palavra_encontrada = match_incorreto.group(1).strip()
+        msg = f"Formato de 'Anexo' incorreto. Encontrado: '{palavra_encontrada}'. Esperado: 'ANEXO' (exatamente, em maiúsculas e sozinho na linha)."
+        return {"status": "FALHA", "detalhe": [{"mensagem": msg, "contexto": palavra_encontrada}]}
+    
+    return {"status": "OK", "detalhe": "Aviso: Nenhuma seção 'ANEXO' foi encontrada (Não obrigatório)."}
