@@ -11,7 +11,6 @@ def auditar_fecho_vigencia(texto_completo):
     texto_para_analise = texto_completo
     erros = [] # Lista para armazenar erros de validação de data
 
-    # Isola o texto antes do anexo, se houver
     match_anexo = re.search(r'\n\s*ANEXO', texto_para_analise, re.IGNORECASE)
     if match_anexo:
         texto_para_analise = texto_para_analise[:match_anexo.start()]
@@ -42,13 +41,12 @@ def auditar_fecho_vigencia(texto_completo):
         r"(\d{1,2})º\s+de\s+" # Dia com ordinal
         r"([a-záçãõéêíóôú]+)\s+de\s+" # Mês (minúsculo com acentos comuns)
         r"(\d{4})\.)" # Ano com ponto final
-        # Não usamos IGNORECASE aqui para forçar o mês minúsculo
     )
     match_data = padrao_data_especifica_regex.search(texto_para_analise)
 
     if match_data:
         frase_completa, dia_str, mes_str, ano_str = match_data.groups()
-        frase_encontrada = re.sub(r'\s+', ' ', frase_completa).strip() # Normaliza espaços
+        frase_encontrada = re.sub(r'\s+', ' ', frase_completa).strip()
 
         # Valida a data encontrada
         try:

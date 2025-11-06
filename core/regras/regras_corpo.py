@@ -82,7 +82,6 @@ def auditar_preambulo(texto_completo):
         ultima_linha = linhas_preambulo[-1].strip()
 
     if ultima_linha != "RESOLVEU:":
-        # Mantém as mensagens de erro simples
         if ultima_linha.lower() == "resolveu:":
             erros.append(f"mensagem: a palavra 'RESOLVEU:' no final do preâmbulo deve estar em maiúsculas. E não: '{ultima_linha}'")
         else:
@@ -102,7 +101,6 @@ def auditar_numeracao_artigos(texto_completo):
     """
     erros = []
     
-    # Encontra todas as ocorrências de "Art. [número]" para análise individual
     matches = re.finditer(r'Art\.\s*(\d+)', texto_completo)
 
     for match in matches:
@@ -140,13 +138,12 @@ def auditar_numeracao_artigos(texto_completo):
                     erros.append(f"O 'Art. {numero_artigo}' deve ser seguido por um ponto final (.).")
                 elif not trecho_apos_artigo.startswith('.  '):
                      erros.append(f"Após 'Art. {numero_artigo}.', deve haver exatamente dois espaços.")
-                else: # Outros erros de formatação
+                else:
                     erros.append(f"A formatação após 'Art. {numero_artigo}' está incorreta. Esperado: '.' seguido de dois espaços.")
 
     if not erros:
         return {"status": "OK", "detalhe": "A numeração e espaçamento dos artigos estão corretos."}
     else:
-        # Usa list(set(erros)) para remover mensagens de erro duplicadas
         return {"status": "FALHA", "detalhe": list(set(erros))[:5]}
     
 def auditar_pontuacao_incisos(texto_completo):
@@ -179,7 +176,7 @@ def auditar_pontuacao_incisos(texto_completo):
         if tem_alineas:
             if not inciso_limpo.endswith(':'):
                  erros.append(f"O Inciso {numeral_romano} precede alíneas e deve terminar com dois-pontos (:).")
-            continue # Pula para o próximo inciso se este tem alíneas
+            continue
 
         if is_last:
             if not inciso_limpo.endswith('.'):
@@ -285,10 +282,9 @@ def auditar_espacamento_paragrafo(texto_completo):
             contexto_curto = contexto_curto.split('\n')[0].strip() # Pega só a primeira linha do contexto
 
             msg = f"Espaçamento incorreto após '§': '{contexto_curto}...'. Esperado: '§  '."
-            erros.append(msg) # Adiciona mensagem simples com contexto
+            erros.append(msg)
 
     if not erros:
         return {"status": "OK", "detalhe": "O espaçamento após o símbolo de parágrafo (§) está correto."}
     else:
-        # Retorna lista de strings, limitando a 5 mensagens
         return {"status": "FALHA", "detalhe": erros[:5]}

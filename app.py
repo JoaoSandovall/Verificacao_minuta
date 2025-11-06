@@ -4,10 +4,7 @@ import PyPDF2
 import pandas as pd
 from io import BytesIO
 import re
-
-# Importa o dicionário central de auditorias
 from core import TODAS_AS_AUDITORIAS
-# Importamos a função específica do anexo
 from core.regras.regras_anexo import auditar_anexo
 
 def extrair_texto(arquivo_enviado):
@@ -42,10 +39,9 @@ def executar_auditoria(texto_para_auditar, regras_selecionadas):
             if nome_regra == "Anexo":
                 continue
 
-            try: # Adicionado try-except para robustez
+            try:
                 resultado = funcao_auditoria(texto_para_auditar)
                 if resultado["status"] == "FALHA":
-                    # Garante que 'detalhe' seja sempre uma lista de strings
                     detalhes = resultado.get("detalhe", ["Erro desconhecido na regra."])
                     if not isinstance(detalhes, list):
                         detalhes = [str(detalhes)]
@@ -55,7 +51,7 @@ def executar_auditoria(texto_para_auditar, regras_selecionadas):
                 else:
                     resultados_ok.append((nome_regra, resultado.get("detalhe", "")))
             except Exception as e:
-                resultados_falha.append((nome_regra, [f"Erro interno ao executar a regra: {e}"])) # Reporta erro na regra
+                resultados_falha.append((nome_regra, [f"Erro interno ao executar a regra: {e}"])) 
 
     return resultados_ok, resultados_falha
 
@@ -70,7 +66,6 @@ def exibir_resultados(titulo, resultados_ok, resultados_falha):
         else:
             for nome, detalhes in resultados_falha:
                 st.error(f"**{nome}**", icon="❌")
-                # Garante que detalhes seja uma lista antes de iterar
                 if isinstance(detalhes, list):
                     for erro in detalhes:
                         st.write(f"&nbsp;&nbsp;&nbsp;&nbsp;- {erro}")
@@ -103,7 +98,7 @@ regras_selecionadas = lista_de_regras # Executa todas por padrão
 
 st.title("🔎 Auditor de Minutas de Resolução") # Título adicionado
 
-tab_texto, tab_arquivo = st.tabs(["Colar Texto", "Anexar Arquivo"]) # Ordem restaurada
+tab_texto, tab_arquivo = st.tabs(["Colar Texto", "Anexar Arquivo"])
 
 # --- Função Auxiliar para Análise ---
 def analisar_e_exibir(texto_completo):
