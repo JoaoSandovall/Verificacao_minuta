@@ -1,77 +1,93 @@
-# Auditor de Minutas de Resolução
-
+Auditor de Minutas de Resolução
 Este projeto é uma ferramenta desenvolvida em Python com a biblioteca Streamlit para automatizar a verificação de conformidade de documentos, como minutas de resoluções, com base em um conjunto de regras de formatação e estilo pré-definidas.
 
-A aplicação permite que o usuário envie um documento (em formato `.pdf`, `.docx` ou `.txt`) ou cole o texto diretamente em uma interface web amigável, recebendo um relatório instantâneo dos itens que estão em conformidade e daqueles que contêm erros.
+A aplicação permite que o usuário cole o texto diretamente ou envie um documento (em formato .pdf, .docx ou .txt), recebendo um relatório instantâneo dos itens que estão em conformidade e daqueles que contêm erros, facilitando a revisão.
 
-## ✨ Funcionalidades
+✨ Funcionalidades
+Interface Web Interativa: Utiliza o Streamlit para criar uma experiência de usuário simples e direta, com abas para "Colar Texto" e "Anexar Arquivo".
 
-* **Interface Web Interativa:** Utiliza o Streamlit para criar uma experiência de usuário simples e intuitiva.
-* **Múltiplos Formatos de Entrada:** Suporta o upload de arquivos `.pdf`, `.docx` e `.txt`, além de permitir que o texto seja colado diretamente na página.
-* **Análise Separada de Resolução e Anexo:** O sistema identifica de forma inteligente a divisão entre o corpo principal da resolução e seu anexo, aplicando conjuntos de regras específicas para cada parte.
-* **Filtro de Regras Dinâmico:** Uma barra lateral permite ao usuário selecionar e desmarcar quais regras de auditoria deseja aplicar, tornando a análise flexível para diferentes tipos de documentos.
-* **Resultados Claros e Organizados:** O relatório de auditoria é apresentado em duas colunas ("Itens com Erros" e "Itens Corretos"), facilitando a identificação dos pontos que necessitam de correção.
+Múltiplos Formatos de Entrada: Suporta a extração de texto de arquivos .pdf, .docx e .txt.
 
-## 📋 Regras Implementadas
+Análise Separada de Resolução e Anexo: O sistema identifica de forma inteligente a divisão entre o corpo principal da resolução e seu anexo (procurando pela linha ANEXO), aplicando conjuntos de regras específicas para cada parte.
 
-Atualmente, o auditor verifica a conformidade dos seguintes itens:
+Relatório Claro: Os resultados são apresentados em duas colunas ("Itens com Erros" e "Itens Corretos") para fácil identificação dos pontos que necessitam de correção.
 
-* **Brasão / Nome do Ministério:** Valida se o cabeçalho do ministério está presente e formatado corretamente.
-* **Epígrafe (Formato e Data):** Checa a estrutura da linha de título da resolução, incluindo a formatação da data.
-* **Ementa (Verbo Inicial):** Garante que o parágrafo de resumo comece com um verbo de ação apropriado.
-* **Preâmbulo (Estrutura):** Analisa a estrutura do preâmbulo, verificando a presença da autoridade e da palavra "RESOLVE:".
-* **Artigos (Numeração):** Confere se a numeração dos artigos segue o padrão ordinal (até 9º) e cardinal (a partir do 10).
-* **Incisos (Pontuação):** Valida a pontuação correta (`;`, `:`, `.`) no final dos incisos.
-* **Siglas (Uso do travessão):** Verifica se as siglas são introduzidas corretamente, sem o uso de parênteses.
-* **Bloco de Assinatura:** Checa a formatação do bloco de assinatura, garantindo que o nome do signatário esteja em maiúsculas.
-* **Fecho de Vigência:** Procura pela cláusula padrão de entrada em vigor da resolução.
-* **Anexo:** Identifica a presença e a formatação da seção "ANEXO".
+Limpeza Rápida: Inclui um botão "Limpar" para apagar rapidamente o texto da caixa de entrada.
 
-## 🚀 Como Executar o Projeto Localmente
+📋 Regras Implementadas
+Atualmente, o auditor verifica a conformidade dos seguintes itens, com base nos arquivos em core/regras/:
 
+Brasão / Nome do Ministério: Valida se o cabeçalho "MINISTÉRIO DA INTEGRAÇÃO E DO DESENVOLVIMENTO REGIONAL" está presente e formatado corretamente.
+
+Epígrafe (Formato e Data): Checa a estrutura da linha de título (ex: RESOLUÇÃO CONDEL Nº...), exigindo que esteja em maiúsculas, incluindo o mês, e valida a data.
+
+Ementa (Verbo Inicial): Garante que o parágrafo de resumo (ementa) comece com um verbo de ação apropriado (ex: "Aprova", "Altera", "Dispõe").
+
+Preâmbulo (Estrutura): Analisa a estrutura do preâmbulo, verificando a presença da autoridade ("O PRESIDENTE DO CONSELHO...") e a terminação exata com a palavra RESOLVE:.
+
+Artigos (Numeração e Espaços): Confere se a numeração dos artigos segue o padrão correto:
+
+Art. 1º (ordinal com dois espaços) para artigos de 1 a 9.
+
+Art. 10. (ponto com dois espaços) para artigos de 10 em diante.
+
+Parágrafos (§ Espaçamento): Verifica se o símbolo de parágrafo (§) é seguido por exatamente dois espaços (§ ).
+
+Incisos (Sequência e Pontuação): Valida a sequência de numerais romanos (I, II, III...) e a pontuação correta (;, : para alíneas, ; e para o penúltimo, e . para o último).
+
+Alíneas (Sequência e Pontuação): Valida a sequência de letras (a, b, c...) e a pontuação correta (;, ; e para a penúltima, e . para a última).
+
+Siglas (Uso do travessão): Procura por siglas incorretamente formatadas (ex: (SIGLA)) e sugere o uso de travessão.
+
+Bloco de Assinatura: Checa a formatação do bloco de assinatura, garantindo que o nome do signatário esteja em MAIÚSCULAS e o cargo abaixo.
+
+Fecho de Vigência: Procura pelas duas cláusulas de vigência permitidas: "Esta Resolução entra em vigor na data de sua publicação." ou "Esta Resolução entra em vigor em [data específica].".
+
+Anexo: Identifica se a linha ANEXO existe e está formatada corretamente (sozinha na linha, em maiúsculas).
+
+🚀 Como Executar o Projeto Localmente
 Siga os passos abaixo para instalar e rodar a aplicação em seu computador.
 
-### Pré-requisitos
+Pré-requisitos
+Python 3.9 ou superior
 
-* Python 3.9 ou superior
-* Git
+Git
 
-### Instalação
+Instalação
+Clone o repositório:
 
-1.  **Clone o repositório:**
-    ```bash
-    git clone [https://github.com/JoaoSandovall/Verificacao_minuta.git](https://github.com/JoaoSandovall/Verificacao_minuta.git)
-    ```
+Bash
 
-2.  **Navegue até a pasta do projeto:**
-    ```bash
-    cd Verificacao_minuta
-    ```
+git clone https://github.com/JoaoSandovall/Verificacao_minuta.git
+Navegue até a pasta do projeto:
 
-3.  **Crie e ative um ambiente virtual:**
-    ```bash
-    # Crie o ambiente
-    python -m venv .venv
+Bash
 
-    # Ative o ambiente (Windows)
-    .\.venv\Scripts\Activate.ps1
+cd Verificacao_minuta
+Crie e ative um ambiente virtual:
 
-    # Ative o ambiente (Linux/Mac)
-    # source .venv/bin/activate
-    ```
+Bash
 
-4.  **Instale as dependências:**
-    O arquivo `requirements.txt` contém todas as bibliotecas que o projeto precisa. Instale todas de uma vez com o comando:
-    ```bash
-    pip install -r requirements.txt
-    ```
+# Crie o ambiente
+python -m venv .venv
 
-### Execução
+# Ative o ambiente (Windows - PowerShell)
+.\.venv\Scripts\Activate.ps1
 
+# Ative o ambiente (Windows - Cmd)
+.\.venv\Scripts\activate
+
+# Ative o ambiente (Linux/Mac)
+# source .venv/bin/activate
+Instale as dependências: O arquivo requirements.txt contém todas as bibliotecas que o projeto precisa. Instale todas de uma vez com o comando:
+
+Bash
+
+pip install -r requirements.txt
+Execução
 Com o ambiente virtual ativo e as dependências instaladas, inicie a aplicação com o seguinte comando:
 
-```bash
-streamlit run app.py
-```
+Bash
 
+streamlit run app.py
 Seu navegador web abrirá automaticamente com a aplicação pronta para ser usada.
