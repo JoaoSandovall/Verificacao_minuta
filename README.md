@@ -1,77 +1,79 @@
-# Auditor de Minutas de Resolução
+# 🔎 Auditor de Minutas de Resolução
 
-Este projeto é uma ferramenta desenvolvida em Python com a biblioteca Streamlit para automatizar a verificação de conformidade de documentos, como minutas de resoluções, com base em um conjunto de regras de formatação e estilo pré-definidas.
-
-A aplicação permite que o usuário envie um documento (em formato `.pdf`, `.docx` ou `.txt`) ou cole o texto diretamente em uma interface web amigável, recebendo um relatório instantâneo dos itens que estão em conformidade e daqueles que contêm erros.
+Ferramenta em Python e Streamlit para validar automaticamente a formatação de minutas de resolução, com base em um conjunto de regras de redação e estilo.
 
 ## ✨ Funcionalidades
 
-* **Interface Web Interativa:** Utiliza o Streamlit para criar uma experiência de usuário simples e intuitiva.
-* **Múltiplos Formatos de Entrada:** Suporta o upload de arquivos `.pdf`, `.docx` e `.txt`, além de permitir que o texto seja colado diretamente na página.
-* **Análise Separada de Resolução e Anexo:** O sistema identifica de forma inteligente a divisão entre o corpo principal da resolução e seu anexo, aplicando conjuntos de regras específicas para cada parte.
-* **Filtro de Regras Dinâmico:** Uma barra lateral permite ao usuário selecionar e desmarcar quais regras de auditoria deseja aplicar, tornando a análise flexível para diferentes tipos de documentos.
-* **Resultados Claros e Organizados:** O relatório de auditoria é apresentado em duas colunas ("Itens com Erros" e "Itens Corretos"), facilitando a identificação dos pontos que necessitam de correção.
+* **Interface Web:** Aplicação simples e interativa.
+* **Entrada Dupla:** Aceita texto colado ou upload de arquivos (`.txt`, `.docx`, `.pdf`).
+* **Análise Estrutural:** Identifica a separação entre a Resolução e o `ANEXO`, aplicando regras de formatação específicas para cada parte.
+* **Relatório Imediato:** Mostra instantaneamente os "Itens com Erros" e "Itens Corretos".
+* **Limpeza Automática:** Remove marcas d'água (ex: "MINUTA DE DOCUMENTO") antes da análise.
 
-## 📋 Regras Implementadas
+## 📋 Regras de Auditoria Implementadas
 
-Atualmente, o auditor verifica a conformidade dos seguintes itens:
+### Cabeçalho
+1.  **Brasão / Nome do Ministério:** Valida se o documento começa com `MINISTÉRIO DA INTEGRAÇÃO E DO DESENVOLVIMENTO REGIONAL`.
+2.  **Epígrafe (Formato e Data):** Checa a estrutura `RESOLUÇÃO CONDEL Nº ...`, exigindo maiúsculas (incluindo o mês) e validando a data.
+3.  **Ementa (Verbo Inicial):** Garante que a ementa comece com um verbo de ação aceito (ex: "Aprova", "Altera", "Dispõe").
 
-* **Brasão / Nome do Ministério:** Valida se o cabeçalho do ministério está presente e formatado corretamente.
-* **Epígrafe (Formato e Data):** Checa a estrutura da linha de título da resolução, incluindo a formatação da data.
-* **Ementa (Verbo Inicial):** Garante que o parágrafo de resumo comece com um verbo de ação apropriado.
-* **Preâmbulo (Estrutura):** Analisa a estrutura do preâmbulo, verificando a presença da autoridade e da palavra "RESOLVE:".
-* **Artigos (Numeração):** Confere se a numeração dos artigos segue o padrão ordinal (até 9º) e cardinal (a partir do 10).
-* **Incisos (Pontuação):** Valida a pontuação correta (`;`, `:`, `.`) no final dos incisos.
-* **Siglas (Uso do travessão):** Verifica se as siglas são introduzidas corretamente, sem o uso de parênteses.
-* **Bloco de Assinatura:** Checa a formatação do bloco de assinatura, garantindo que o nome do signatário esteja em maiúsculas.
-* **Fecho de Vigência:** Procura pela cláusula padrão de entrada em vigor da resolução.
-* **Anexo:** Identifica a presença e a formatação da seção "ANEXO".
+### Corpo da Resolução
+4.  **Preâmbulo (Estrutura):** Analisa o preâmbulo, verificando se inicia com a autoridade correta (ex: `O PRESIDENTE DO CONSELHO...`) e se termina exatamente com `RESOLVEU:`.
+5.  **Artigos (Numeração):** Confere o padrão de numeração:
+    * `Art. 1º ` (com `º` e dois espaços).
+    * `Art. 10. ` (com `.` e dois espaços).
+6.  **Parágrafos (§ Espaçamento):** Verifica se o símbolo `§` é seguido por exatamente dois espaços.
+7.  **Incisos (Pontuação):** Valida a sequência de numerais romanos (I, II, III...) e a pontuação correta (`;`, `: (para alíneas)`, `; e (penúltimo)`, `. (último)`).
+8.  **Alíneas (Pontuação):** Valida a sequência de letras (a, b, c...) e a pontuação correta (`;`, `; e (penúltima)`, `. (última)`).
+9.  **Siglas (Uso do travessão):** Procura por siglas incorretamente formatadas entre parênteses, ex: `(SIGLA)`.
 
-## 🚀 Como Executar o Projeto Localmente
+### Rodapé e Anexo
+10. **Bloco de Assinatura:** Checa o padrão `NOME DO SIGNATÁRIO` (maiúsculas) seguido pelo `Cargo` (normal).
+11. **Fecho de Vigência:** Verifica se a cláusula corresponde *exatamente* a um dos padrões:
+    * `Esta Resolução entra em vigor na data de sua publicação.`
+    * `Esta Resolução entra em vigor em [dia]º de [mês minúsculo] de [ano].`
+12. **Anexo:** Identifica se a linha `ANEXO` está formatada corretamente (sozinha, em maiúsculas).
 
-Siga os passos abaixo para instalar e rodar a aplicação em seu computador.
+## 🚀 Como Executar Localmente
 
 ### Pré-requisitos
-
-* Python 3.9 ou superior
-* Git
+* [Python 3.9+](https://www.python.org/downloads/)
+* [Git](https://git-scm.com/downloads)
 
 ### Instalação
 
-1.  **Clone o repositório:**
+1.  Clone o repositório:
     ```bash
     git clone [https://github.com/JoaoSandovall/Verificacao_minuta.git](https://github.com/JoaoSandovall/Verificacao_minuta.git)
     ```
 
-2.  **Navegue até a pasta do projeto:**
+2.  Acesse a pasta do projeto:
     ```bash
     cd Verificacao_minuta
     ```
 
-3.  **Crie e ative um ambiente virtual:**
+3.  Crie e ative um ambiente virtual:
     ```bash
-    # Crie o ambiente
+    # Criar o ambiente
     python -m venv .venv
-
-    # Ative o ambiente (Windows)
+    
+    # Ativar (Windows)
     .\.venv\Scripts\Activate.ps1
-
-    # Ative o ambiente (Linux/Mac)
-    # source .venv/bin/activate
+    
+    # Ativar (Linux/Mac)
+    source .venv/bin/activate
     ```
 
-4.  **Instale as dependências:**
-    O arquivo `requirements.txt` contém todas as bibliotecas que o projeto precisa. Instale todas de uma vez com o comando:
+4.  Instale as dependências:
     ```bash
     pip install -r requirements.txt
     ```
 
 ### Execução
 
-Com o ambiente virtual ativo e as dependências instaladas, inicie a aplicação com o seguinte comando:
+1.  Inicie a aplicação Streamlit:
+    ```bash
+    streamlit run app.py
+    ```
 
-```bash
-streamlit run app.py
-```
-
-Seu navegador web abrirá automaticamente com a aplicação pronta para ser usada.
+2.  Abra o seu navegador no endereço `http://localhost:8501`.
