@@ -15,17 +15,17 @@ Relatório Claro: Os resultados são apresentados em duas colunas ("Itens com Er
 Limpeza Rápida: Inclui um botão "Limpar" para apagar rapidamente o texto da caixa de entrada.
 
 📋 Regras Implementadas
-Atualmente, o auditor verifica a conformidade dos seguintes itens, com base nos arquivos em core/regras/:
+Atualmente, o auditor verifica a conformidade dos seguintes itens:
 
 Brasão / Nome do Ministério: Valida se o cabeçalho "MINISTÉRIO DA INTEGRAÇÃO E DO DESENVOLVIMENTO REGIONAL" está presente e formatado corretamente.
 
-Epígrafe (Formato e Data): Checa a estrutura da linha de título (ex: RESOLUÇÃO CONDEL Nº...), exigindo que esteja em maiúsculas, incluindo o mês, e valida a data.
+Epígrafe (Formato e Data): Checa a estrutura da linha de título (ex: RESOLUÇÃO CONDEL Nº...), exigindo que esteja em maiúsculas (incluindo o mês) e valida a data.
 
 Ementa (Verbo Inicial): Garante que o parágrafo de resumo (ementa) comece com um verbo de ação apropriado (ex: "Aprova", "Altera", "Dispõe").
 
-Preâmbulo (Estrutura): Analisa a estrutura do preâmbulo, verificando a presença da autoridade ("O PRESIDENTE DO CONSELHO...") e a terminação exata com a palavra RESOLVE:.
+Preâmbulo (Estrutura): Analisa a estrutura do preâmbulo, verificando a presença da autoridade ("O PRESIDENTE DO CONSELHO...") e a terminação com a palavra RESOLVEU:.
 
-Artigos (Numeração e Espaços): Confere se a numeração dos artigos segue o padrão correto:
+Artigos (Numeração): Confere se a numeração dos artigos segue o padrão correto:
 
 Art. 1º (ordinal com dois espaços) para artigos de 1 a 9.
 
@@ -33,9 +33,9 @@ Art. 10. (ponto com dois espaços) para artigos de 10 em diante.
 
 Parágrafos (§ Espaçamento): Verifica se o símbolo de parágrafo (§) é seguido por exatamente dois espaços (§ ).
 
-Incisos (Sequência e Pontuação): Valida a sequência de numerais romanos (I, II, III...) e a pontuação correta (;, : para alíneas, ; e para o penúltimo, e . para o último).
+Incisos (Pontuação): Valida a sequência de numerais romanos (I, II, III...) e a pontuação correta (;, : para alíneas, ; e para o penúltimo, e . para o último).
 
-Alíneas (Sequência e Pontuação): Valida a sequência de letras (a, b, c...) e a pontuação correta (;, ; e para a penúltima, e . para a última).
+Alíneas (Pontuação): Valida a sequência de letras (a, b, c...) e a pontuação correta (;, ; e para a penúltima, e . para a última).
 
 Siglas (Uso do travessão): Procura por siglas incorretamente formatadas (ex: (SIGLA)) e sugere o uso de travessão.
 
