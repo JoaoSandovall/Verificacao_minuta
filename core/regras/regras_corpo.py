@@ -288,3 +288,41 @@ def auditar_espacamento_paragrafo(texto_completo):
         return {"status": "OK", "detalhe": "O espaçamento após o símbolo de parágrafo (§) está correto."}
     else:
         return {"status": "FALHA", "detalhe": erros[:5]}
+    
+def auditar_data_sem_zero_esquerda(texto_completo):
+    """
+    Verifica se as datas no formato 'dd de mes de aaaa' estão
+    usando zero à esquerda para dias < 10 (ex: '09 de...').
+    """
+    erros = []
+    
+    # Padrão para encontrar datas (case-insensitive para 'de' e 'mês')
+    # Captura: (dia), (mês), (ano)
+    padrao_data = re.compile(
+        r"(\d{1,2})\s+de\s+([a-zA-ZçÇãÃõÕáÁéÉíÍóÓúÚ]+)\s+de\s+(\d{4})",
+        re.IGNORECASE
+    )
+
+    meses_validos = [
+        "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+        "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
+    ]
+
+    for match in re.finditer(padrao_data, texto_completo):
+        dia_str, mes_str, ano_str = match.groups()
+        
+        if mes_str.lower() not in meses_validos:
+            continue
+
+        # A REGRA: Se tem 2 dígitos E começa com 0
+        if len(dia_str) == 2 and dia_str.startswith('0'):
+            # Constrói a sugestão correta (ex: '09' -> '9')
+            dia_correto = str(int(dia_str)) 
+            sugestao = f"'{dia_correto} de {mes_str} de {ano_str}'"
+            erro_msg = f"Data com dia formatado incorretamente (zero à esquerda): '{match.group(0)}'. O correto seria: {sugestao}."
+            erros.append(erro_msg)
+
+    if not erros:
+        return {"status": "OK", "detalhe": "Nenhuma data com formatação de dia incorreta (zero à esquerda) foi encontrada."}
+    else:
+        return {"status": "FALHA", "detalhe": erros[:5]}

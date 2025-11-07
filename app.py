@@ -156,7 +156,8 @@ def analisar_e_exibir(texto_completo):
              "Parágrafos (§ Espaçamento)",
              "Incisos (Pontuação)",
              "Alíneas (Pontuação)",
-             "Siglas (Uso do travessão)"
+             "Siglas (Uso do travessão)",
+             "Datas (Zero à Esquerda no Dia)"  # <-- 3. ADICIONAR A REGRA AQUI
             ]
         regras_a_rodar_no_anexo = [regra for regra in regras_para_anexo if regra in regras_selecionadas]
         ok_anexo, falha_anexo = executar_auditoria(texto_anexo, regras_a_rodar_no_anexo)
@@ -165,9 +166,7 @@ def analisar_e_exibir(texto_completo):
         # Se encontrou "ANEXO" mas não há conteúdo depois
         st.divider()
         st.info("Seção 'ANEXO' encontrada, mas está vazia.")
-
-
-# --- ABA 1: COLAR TEXTO ---
+        
 with tab_texto:
     st.write("Copie e cole o texto completo da minuta na caixa abaixo para análise.")
     texto_colado = st.text_area("Texto da Minuta:", height=350, label_visibility="collapsed", key="texto_colado_input")
@@ -201,4 +200,3 @@ with tab_arquivo:
                 texto_completo = extrair_texto(arquivo_anexado)
                 if texto_completo:
                     analisar_e_exibir(texto_completo) # Chama a função centralizada
-                # else: a função extrair_texto já mostra o erro
