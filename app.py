@@ -36,7 +36,8 @@ def executar_auditoria(texto_para_auditar, regras_selecionadas):
         return [], []
     for nome_regra, funcao_auditoria in TODAS_AS_AUDITORIAS.items():
         if nome_regra in regras_selecionadas:
-            if nome_regra == "Anexo":
+            # A regra 'Anexo (Identificação)' é tratada separadamente no app.py
+            if nome_regra == "Anexo (Identificação)":
                 continue
 
             try:
@@ -93,10 +94,43 @@ def limpar_caixa_texto():
 # --- Interface Gráfica (Front-end) ---
 st.set_page_config(page_title="Auditor de Minutas", layout="wide")
 
-lista_de_regras = list(TODAS_AS_AUDITORIAS.keys())
-regras_selecionadas = lista_de_regras # Executa todas por padrão
+# Nomes das regras conforme __init__.py
+TODAS_REGRAS_NOMES = list(TODAS_AS_AUDITORIAS.keys())
 
-st.title("🔎 Auditor de Minutas de Resolução") # Título adicionado
+# --- MUDANÇA DE LÓGICA ---
+# Define quais regras rodam em qual parte
+REGRAS_RESOLUCAO = [
+    "Brasão / Nome do Ministério",
+    "Epígrafe (Formato e Data)",
+    "Ementa (Verbo Inicial)",
+    "Preâmbulo (Estrutura)",
+    "Bloco de Assinatura",
+    "Fecho de Vigência",
+    "Artigos (Formato Numeração)",
+    "Parágrafos (§ Espaçamento)",
+    "Datas (Zero à Esquerda no Dia)",
+    "Siglas (Uso do travessão)",
+    "Incisos (Pontuação - Resolução)",
+    "Alíneas (Pontuação - Resolução)",
+]
+
+REGRAS_ANEXO = [
+    # Regras de formatação que continuam valendo
+    "Artigos (Formato Numeração)",
+    "Parágrafos (§ Espaçamento)",
+    "Datas (Zero à Esquerda no Dia)",
+    "Siglas (Uso do travessão)",
+    
+    # Novas regras de sequência e pontuação específicas do Anexo
+    "Anexo: Sequência de Capítulos",
+    "Anexo: Sequência de Seções",
+    "Anexo: Sequência de Artigos",
+    "Anexo: Pontuação Hierárquica",
+]
+# --- FIM DA MUDANÇA ---
+
+
+st.title("🔎 Auditor de Minutas de Resolução")
 
 tab_texto, tab_arquivo = st.tabs(["Colar Texto", "Anexar Arquivo"])
 
@@ -128,9 +162,9 @@ def analisar_e_exibir(texto_completo):
         texto_anexo = texto_limpo[match_anexo.end():].strip()
 
     # 3. Executa o resto das regras na Resolução
-    ok_res, falha_res = executar_auditoria(texto_resolucao, regras_selecionadas)
+    ok_res, falha_res = executar_auditoria(texto_resolucao, REGRAS_RESOLUCAO)
 
-    # 4. Adiciona o resultado da regra do Anexo
+    # 4. Adiciona o resultado da regra do Anexo (Identificação)
     detalhes_anexo = resultado_anexo.get("detalhe", [])
     if not isinstance(detalhes_anexo, list):
         detalhes_anexo = [str(detalhes_anexo)]
@@ -138,10 +172,10 @@ def analisar_e_exibir(texto_completo):
         detalhes_anexo = [str(d) for d in detalhes_anexo]
 
     if resultado_anexo["status"] == "FALHA":
-        falha_res.append(("Anexo", detalhes_anexo))
+        falha_res.append(("Anexo (Identificação)", detalhes_anexo))
     else:
         detalhe_ok = resultado_anexo.get("detalhe", "")
-        ok_res.append(("Anexo", str(detalhe_ok)))
+        ok_res.append(("Anexo (Identificação)", str(detalhe_ok)))
 
     # 5. Exibe resultados da Resolução
     st.divider()
@@ -150,23 +184,16 @@ def analisar_e_exibir(texto_completo):
     # 6. Exibe resultados do Anexo (se existir E contiver texto)
     if texto_anexo and texto_anexo.strip():
         st.divider()
-        # Nomes das regras conforme __init__.py
-        regras_para_anexo = [
-             "Artigos (Numeração)",
-             "Parágrafos (§ Espaçamento)",
-             "Incisos (Pontuação)",
-             "Alíneas (Pontuação)",
-             "Siglas (Uso do travessão)",
-             "Datas (Zero à Esquerda no Dia)"  # <-- 3. ADICIONAR A REGRA AQUI
-            ]
-        regras_a_rodar_no_anexo = [regra for regra in regras_para_anexo if regra in regras_selecionadas]
-        ok_anexo, falha_anexo = executar_auditoria(texto_anexo, regras_a_rodar_no_anexo)
+        # Usa a lista REGRAS_ANEXO definida globalmente
+        ok_anexo, falha_anexo = executar_auditoria(texto_anexo, REGRAS_ANEXO)
         exibir_resultados("Resultado do Anexo", ok_anexo, falha_anexo)
     elif match_anexo and (not texto_anexo or not texto_anexo.strip()):
         # Se encontrou "ANEXO" mas não há conteúdo depois
         st.divider()
         st.info("Seção 'ANEXO' encontrada, mas está vazia.")
-        
+
+
+# --- ABA 1: COLAR TEXTO ---
 with tab_texto:
     st.write("Copie e cole o texto completo da minuta na caixa abaixo para análise.")
     texto_colado = st.text_area("Texto da Minuta:", height=350, label_visibility="collapsed", key="texto_colado_input")
@@ -200,3 +227,4 @@ with tab_arquivo:
                 texto_completo = extrair_texto(arquivo_anexado)
                 if texto_completo:
                     analisar_e_exibir(texto_completo) # Chama a função centralizada
+                # else: a função extrair_texto já mostra o erro
