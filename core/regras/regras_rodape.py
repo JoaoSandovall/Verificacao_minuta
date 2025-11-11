@@ -16,29 +16,23 @@ def auditar_fecho_vigencia(texto_completo):
         texto_para_analise = texto_para_analise[:match_anexo.start()]
 
     # Padrão 1: Data de publicação (Exato, com ponto final)
-    # Usamos re.escape para tratar o ponto final literalment
     padrao_publicacao_texto = "Esta Resolução entra em vigor na data de sua publicação."
-    # Procuramos o padrão exato, considerando espaços flexíveis (\s+)
     padrao_publicacao_regex = re.compile(r"Esta\s+Resolução\s+entra\s+em\s+vigor\s+na\s+data\s+de\s+sua\s+publicação\.", re.IGNORECASE)
     match_publicacao = padrao_publicacao_regex.search(texto_para_analise)
 
     if match_publicacao:
-        # Verifica se a frase encontrada corresponde exatamente (ignorando múltiplos espaços)
         frase_encontrada = re.sub(r'\s+', ' ', match_publicacao.group(0)).strip()
         frase_esperada_normalizada = re.sub(r'\s+', ' ', padrao_publicacao_texto).strip()
         if frase_encontrada.lower() == frase_esperada_normalizada.lower():
-             # Retorna OK se encontrou exatamente
              return {"status": "OK", "detalhe": f"A cláusula de vigência foi encontrada: '{frase_encontrada}'"}
         else:
-             # Se encontrou algo parecido mas não exato (raro com essa regex, mas por segurança)
              erros.append(f"Encontrado texto similar, mas não exato '{padrao_publicacao_texto}'. Encontrado: '{frase_encontrada}'")
              # Continua para verificar o Padrão 2
 
-    # Padrão 2: Data específica (Exato, com ordinal º, mês minúsculo, ponto final)
-    # Regex para capturar dia(s), mês e ano
+    # Padrão 2: Data específica (Exato, com ordinal º ou °, mês minúsculo, ponto final)
     padrao_data_especifica_regex = re.compile(
         r"(Esta\s+Resolução\s+entra\s+em\s+vigor\s+em\s+" # Início Fixo
-        r"(\d{1,2})º\s+de\s+" # Dia com ordinal
+        r"(\d{1,2})[º°]\s+de\s+" # Dia com ordinal (º) ou grau (°)
         r"([a-záçãõéêíóôú]+)\s+de\s+" # Mês (minúsculo com acentos comuns)
         r"(\d{4})\.)" # Ano com ponto final
     )
@@ -53,37 +47,34 @@ def auditar_fecho_vigencia(texto_completo):
             locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
             data_str_validacao = f"{dia_str} de {mes_str} de {ano_str}" # Mês já está minúsculo pela regex
             datetime.strptime(data_str_validacao, "%d de %B de %Y")
-            # Se a data é válida, retorna OK
             return {
                 "status": "OK",
                 "detalhe": f"A cláusula de vigência foi encontrada: '{frase_encontrada}'"
             }
         except ValueError:
-             # Retorna FALHA se a data for inválida
              return {
                  "status": "FALHA",
                  "detalhe": [f"A data de vigência '{dia_str}º de {mes_str} de {ano_str}' parece ser inválida."]
              }
         except locale.Error:
-             # Se o locale falhar, aceita a formatação, mas avisa (retorna OK com aviso)
               return {
                  "status": "OK",
                  "detalhe": f"A cláusula de vigência foi encontrada: '{frase_encontrada}'. Aviso: Não foi possível validar a data (locale pt_BR não encontrado)."
              }
 
-    # Se nenhum dos padrões exatos foi encontrado E não houve erro parcial no padrão 1
     if not erros:
         msg_falha = ("A cláusula de vigência não foi encontrada ou não segue um dos padrões exatos esperados: "
                      "'Esta Resolução entra em vigor na data de sua publicação.' ou "
-                     "'Esta Resolução entra em vigor em [dia]º de [mês minúsculo] de [ano].'")
+                     "'Esta Resolução entra em vigor em [dia]° de [mês minúsculo] de [ano].'")
         erros.append(msg_falha)
 
-    # Retorna FALHA se chegou até aqui
     return {"status": "FALHA", "detalhe": erros}
 
 
 def auditar_assinatura(texto_completo):
-    """Verifica se o bloco de assinatura segue o padrão (NOME EM MAIÚSCULAS / Cargo)."""
+    """
+    Verifica se o bloco de assinatura segue o novo padrão (APENAS NOME EM MAIÚSCULAS).
+    """
     
     texto_para_analise = texto_completo
     
@@ -93,31 +84,33 @@ def auditar_assinatura(texto_completo):
         # Se encontrou um anexo, analisa apenas o texto ANTES dele
         texto_para_analise = texto_completo[:match_anexo.start()]
 
+    # Pega as últimas 4 linhas não vazias para análise
     linhas = [linha.strip() for linha in texto_para_analise.strip().split('\n') if linha.strip()]
     
-    if len(linhas) < 2:
+    if not linhas:
         return {"status": "FALHA", "detalhe": ["Não foi possível encontrar um bloco de assinatura reconhecível no final da resolução."]}
     
-    # Analisa as últimas 4 linhas para mais robustez
-    ultimas_linhas = linhas[-4:]
-    try:
-        indice_nome = -1
-        for i, linha in enumerate(ultimas_linhas):
-            # Procura uma linha que seja MAIÚSCULA, tenha mais de uma palavra e não seja um Artigo
-            if linha.isupper() and len(linha.split()) > 1 and not linha.startswith('Art.'):
-                indice_nome = i
-                break
-        
-        if indice_nome == -1:
-            return {"status": "FALHA", "detalhe": ["O nome do signatário em letras maiúsculas não foi encontrado no bloco de assinatura."]}
-        
-        linha_nome = ultimas_linhas[indice_nome]
-        # Pega a linha seguinte à do nome como sendo o cargo
-        linha_cargo = ultimas_linhas[indice_nome + 1]
-        
-        if not linha_cargo or linha_cargo.isupper():
-            return {"status": "FALHA", "detalhe": [f"O cargo abaixo do nome '{linha_nome}' não foi encontrado ou está incorretamente em maiúsculas."]}
-        
-        return {"status": "OK", "detalhe": "O bloco de assinatura está formatado corretamente."}
-    except IndexError:
-        return {"status": "FALHA", "detalhe": ["A estrutura do bloco de assinatura parece inválida (ex: nome sem cargo abaixo)."]}
+    # Analisa as últimas 4 linhas para mais robustez (ou menos, se o doc for curto)
+    ultimas_linhas = linhas[-4:] 
+    
+    indice_nome = -1
+    linha_nome = ""
+
+    # Encontra a linha do NOME (toda maiúscula, mais de uma palavra)
+    for i, linha in enumerate(ultimas_linhas):
+        if linha.isupper() and len(linha.split()) > 1 and not linha.startswith('Art.'):
+            indice_nome = i
+            linha_nome = linha
+            break
+    
+    if indice_nome == -1:
+        return {"status": "FALHA", "detalhe": ["O nome do signatário em letras maiúsculas não foi encontrado no bloco de assinatura."]}
+    
+    # Verifica se a linha do nome NÃO é a última linha do bloco
+    # Se não for a última, significa que há algo abaixo dela, o que é um erro.
+    if indice_nome < len(ultimas_linhas) - 1:
+        linha_seguinte = ultimas_linhas[indice_nome + 1]
+        return {"status": "FALHA", "detalhe": [f"O bloco de assinatura deve conter apenas o nome em maiúsculas ('{linha_nome}'). Foi encontrado texto abaixo dele: '{linha_seguinte}'."]}
+    
+    # Se for a última linha (indice_nome == len(ultimas_linhas) - 1), está correto.
+    return {"status": "OK", "detalhe": "O bloco de assinatura (apenas nome) está formatado corretamente."}
