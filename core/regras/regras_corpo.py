@@ -325,10 +325,6 @@ def auditar_data_sem_zero_esquerda(texto_completo):
     else:
         return {"status": "FALHA", "detalhe": erros[:5]}
 
-
-# --- NOVAS REGRAS PARA O ANEXO ---
-# (As regras do anexo permanecem inalteradas, pois já estavam corretas)
-
 def auditar_sequencia_capitulos_anexo(texto_completo):
     """(NOVA REGRA - Anexo) Verifica a sequência dos Capítulos (I, II, III...)."""
     erros = []
