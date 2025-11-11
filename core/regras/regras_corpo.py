@@ -14,11 +14,10 @@ def _roman_to_int(s):
         prev_value = value
     return result
 
-
 def auditar_preambulo(texto_completo):
     """
     Verifica a formatação do Preâmbulo, focando na autoridade específica
-    e na terminação com 'RESOLVE:'.
+    e na terminação com 'o Colegiado resolveu:'.
     """
     erros = []
 
@@ -51,17 +50,18 @@ def auditar_preambulo(texto_completo):
     if not texto_preambulo:
         return {"status": "FALHA", "detalhe": [{"mensagem": "O texto do preâmbulo parece estar vazio.", "contexto": ""}]}
 
-    # Passo 2: Verificar as regras com a nova lista de autoridades
+    # --- LÓGICA DE VERIFICAÇÃO ATUALIZADA ---
+    # Normaliza o texto do preâmbulo para uma única linha, removendo quebras de linha
+    # e espaços duplicados, para verificar o início e o fim.
+    texto_preambulo_normalizado = re.sub(r'\s+', ' ', texto_preambulo).strip()
+
+    # Passo 2: Verificar a Autoridade (Início)
     autoridades_validas = [
         "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DO CENTRO-OESTE - CONDEL/SUDECO",
         "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DA AMAZÔNIA - CONDEL/SUDAM",
         "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DO NORDESTE – CONDEL/SUDENE"
     ]
     
-    # Normaliza o texto do preâmbulo para uma única linha para facilitar a comparação
-    # Isso lida com as quebras de linha que podem existir no meio do título
-    texto_preambulo_normalizado = re.sub(r'\s+', ' ', texto_preambulo)
-
     autoridade_encontrada = False
     for autoridade in autoridades_validas:
         autoridade_normalizada = re.sub(r'\s+', ' ', autoridade)
@@ -71,22 +71,24 @@ def auditar_preambulo(texto_completo):
             
     if not autoridade_encontrada:
         contexto_erro = texto_preambulo.split('\n')[0].strip()
-        # Mantém a mensagem de erro simples
-        erros.append("mensagem : O Começo do preâmbulo está incorreto.")
+        erros.append(f"O Começo do preâmbulo está incorreto. Esperado uma das autoridades válidas. Encontrado: '{contexto_erro}...'")
 
-    # Regra 2: A palavra 'RESOLVE:' no final, em maiúsculas (lógica antiga)
-    # Verifica a última linha não vazia
-    ultima_linha = ""
-    linhas_preambulo = texto_preambulo.strip().split('\n')
-    if linhas_preambulo:
-        ultima_linha = linhas_preambulo[-1].strip()
+    # Passo 3: Verificar a Terminação (Fim)
+    padrao_correto_fim = "o Colegiado resolveu:"
 
-    if ultima_linha != "resolveu:":
-        if ultima_linha.lower() == "resolveu:":
-            erros.append(f"mensagem: a palavra 'resolveu:' no final do preâmbulo deve estar em minúscula. E não: '{ultima_linha}'")
+    if not texto_preambulo_normalizado.endswith(padrao_correto_fim):
+        # Pega os últimos 50 caracteres para mostrar o erro
+        contexto_fim = texto_preambulo_normalizado[-50:]
+        
+        # Verifica se o erro é apenas de maiúscula/minúscula
+        if texto_preambulo_normalizado.lower().endswith(padrao_correto_fim):
+            erros.append(f"A terminação do preâmbulo deve ser '{padrao_correto_fim}' (exatamente, com 'o' minúsculo). Foi encontrado: '...{contexto_fim}'")
         else:
-            erros.append(f"mensagem: O preâmbulo deve terminar com a palavra 'resolveu:' Mas foi encontrado: {ultima_linha}")
+            erros.append(f"O preâmbulo deve terminar com a frase exata '{padrao_correto_fim}'. Foi encontrado: '...{contexto_fim}'")
             
+    # --- FIM DA ATUALIZAÇÃO ---
+            
+    # Passo 4: Retornar o resultado
     if not erros:
         return {"status": "OK", "detalhe": "O preâmbulo está estruturado corretamente."}
     else:

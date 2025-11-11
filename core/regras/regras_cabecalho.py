@@ -30,7 +30,7 @@ def auditar_epigrafe(texto_completo):
     ]
     
     padrao_epigrafe = re.compile(
-        r"(MINUTA DE )?"
+        r"(MINUTA )?"
         r"RESOLUÇÃO CONDEL(?:/SUDECO|/SUDENE|/SUDAM)? Nº "
         r"(\d+|xx|XX),"  # Permite número ou "xx" / "XX"
         r"\s+DE\s+(\d{1,2}|xx|XX)\s+DE\s+" # Permite dia ou "xx" / "XX"
@@ -43,7 +43,7 @@ def auditar_epigrafe(texto_completo):
     if not match:
         # Se o padrão estrito falhar, tentamos encontrar um padrão flexível
         # apenas para dar uma mensagem de erro mais útil para o usuário.
-        padrao_flexivel = re.compile(r"MINUTA DE RESOLUÇÃO CONDEL.*? DE \d{4}", re.IGNORECASE)
+        padrao_flexivel = re.compile(r"MINUTA RESOLUÇÃO CONDEL.*? DE \d{4}", re.IGNORECASE)
         match_flexivel = padrao_flexivel.search(texto_completo)
         if match_flexivel:
             contexto = match_flexivel.group(0).strip()
@@ -110,13 +110,12 @@ def auditar_ementa(texto_completo):
             if linha.strip():
                 texto_ementa = linha.strip()
                 break
-        
+        []
         if not texto_ementa:
             return {"status": "FALHA", "detalhe": ["Não foi possível encontrar o texto da ementa após a data."]}
         
         primeira_palavra = texto_ementa.split()[0]
         
-        # Agora a variável VERBOS_ACEITOS existe
         if primeira_palavra in VERBOS_ACEITOS:
             return {"status": "OK", "detalhe": f"A ementa inicia corretamente com o verbo '{primeira_palavra}'."}
         else:
