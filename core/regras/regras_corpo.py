@@ -39,8 +39,7 @@ def auditar_preambulo(texto_completo):
                 inicio_preambulo_texto = "\n".join(linhas_limpas[i+1:])
                 break
         
-        # --- CORREÇÃO DE REGEX ---
-        # Adicionado o símbolo de grau (°) para aceitar Art. 1°
+        # Regex atualizada para aceitar º, o, ou °
         match_artigo1 = re.search(r'Art\.\s*1[ºo°]', inicio_preambulo_texto, re.IGNORECASE)
         
         texto_preambulo = inicio_preambulo_texto[:match_artigo1.start()].strip()
@@ -52,8 +51,7 @@ def auditar_preambulo(texto_completo):
     if not texto_preambulo:
         return {"status": "FALHA", "detalhe": [{"mensagem": "O texto do preâmbulo parece estar vazio.", "contexto": ""}]}
 
-    # --- LÓGICA DE VERIFICAÇÃO ATUALIZADA (Para parágrafo único) ---
-    # Normaliza o texto do preâmbulo para uma única linha
+    # Lógica de verificação para parágrafo único
     texto_preambulo_normalizado = re.sub(r'\s+', ' ', texto_preambulo).strip()
 
     # Passo 2: Verificar a Autoridade (Início)
@@ -85,8 +83,6 @@ def auditar_preambulo(texto_completo):
         else:
             erros.append(f"O preâmbulo deve terminar com a frase exata '{padrao_correto_fim}'. Foi encontrado: '...{contexto_fim}'")
             
-    # --- FIM DA ATUALIZAÇÃO ---
-            
     # Passo 4: Retornar o resultado
     if not erros:
         return {"status": "OK", "detalhe": "O preâmbulo está estruturado corretamente."}
@@ -96,30 +92,34 @@ def auditar_preambulo(texto_completo):
 def auditar_numeracao_artigos(texto_completo):
     """
     (REGRA - Resolução e Anexo)
-    Verifica a numeração e o espaçamento dos artigos com regras mais rígidas.
-    - Art. 1º a 9º: Deve ser 'Art. N°  ' (com º e dois espaços).
-    - Art. 10 em diante: Deve ser 'Art. NN.  ' (com . e dois espaços).
+    Verifica a numeração e o espaçamento dos artigos que INICIAM uma linha.
+    - Art. 1° a 9°: Deve ser 'Art. N°  ' (com ° e dois espaços).
+    - Art. 10. em diante: Deve ser 'Art. NN.  ' (com . e dois espaços).
+    - Artigos no meio do texto (ex: "conforme o art. 1°") são ignorados.
     """
     erros = []
     
-    matches = re.finditer(r'Art\.\s*(\d+)', texto_completo)
+    # --- MUDANÇA 1: Regex agora só busca artigos no INÍCIO da linha (com re.MULTILINE) ---
+    # O ^\s* garante que estamos pegando apenas artigos que começam uma linha (com ou sem indentação)
+    matches = re.finditer(r'^\s*Art\.\s*(\d+)', texto_completo, re.MULTILINE)
 
     for match in matches:
         numero_artigo_str = match.group(1)
         numero_artigo = int(numero_artigo_str)
         
-        # Pega a fatia do texto original logo após o match para verificar pontuação e espaços
         pos_fim_match = match.end()
         trecho_apos_artigo = texto_completo[pos_fim_match : pos_fim_match + 3]
 
         # --- VALIDAÇÃO PARA ARTIGOS DE 1 A 9 ---
         if 1 <= numero_artigo <= 9:
-            padrao_esperado = "°  "
+            
+            # --- MUDANÇA 2: Agora '°' (grau) é OBRIGATÓRIO e 'º' (ordinal) é um ERRO ---
+            padrao_esperado = "°  " # Símbolo de grau
     
             if not trecho_apos_artigo.startswith(padrao_esperado):
                 # Análise do erro específico
-                if trecho_apos_artigo.startswith('°'):
-                    erros.append(f"No 'Art. {numero_artigo}', o símbolo ordinal está incorreto. Use '°' em vez de 'º'.")
+                if trecho_apos_artigo.startswith('º'):
+                    erros.append(f"No 'Art. {numero_artigo}', o símbolo ordinal está incorreto. Use '°' (símbolo de grau) em vez de 'º' (ordinal).")
                 elif not trecho_apos_artigo.startswith('°'):
                     erros.append(f"O 'Art. {numero_artigo}' deve ser seguido pelo ordinal '°'.")
                 elif not trecho_apos_artigo.startswith('°  '):
@@ -133,8 +133,8 @@ def auditar_numeracao_artigos(texto_completo):
             
             if not trecho_apos_artigo.startswith(padrao_esperado):
                 # Análise do erro específico
-                if trecho_apos_artigo.startswith('°'):
-                    erros.append(f"O 'Art. {numero_artigo}' não deve usar o ordinal '°', mas sim um ponto final (.).")
+                if trecho_apos_artigo.startswith('°') or trecho_apos_artigo.startswith('º'):
+                    erros.append(f"O 'Art. {numero_artigo}' não deve usar o ordinal '°' ou 'º', mas sim um ponto final (.).")
                 elif not trecho_apos_artigo.startswith('.'):
                     erros.append(f"O 'Art. {numero_artigo}' deve ser seguido por um ponto final (.).")
                 elif not trecho_apos_artigo.startswith('.  '):
@@ -143,7 +143,7 @@ def auditar_numeracao_artigos(texto_completo):
                     erros.append(f"A formatação após 'Art. {numero_artigo}' está incorreta. Esperado: '.' seguido de dois espaços.")
 
     if not erros:
-        return {"status": "OK", "detalhe": "A numeração e espaçamento dos artigos estão corretos."}
+        return {"status": "OK", "detalhe": "A numeração e espaçamento dos artigos (no início de linha) estão corretos."}
     else:
         return {"status": "FALHA", "detalhe": list(set(erros))[:5]}
     
@@ -262,31 +262,31 @@ def auditar_pontuacao_alineas(texto_completo):
         return {"status": "FALHA", "detalhe": erros[:5]}
 
 def auditar_espacamento_paragrafo(texto_completo):
-    """(REGRA - Resolução e Anexo) Verifica os 2 espaços após o '§'."""
+    """(REGRA - Resolução e Anexo) Verifica os 2 espaços após o '§' que INICIA uma linha."""
     
     erros = []
-    padrao_paragrafo = r"§"
     padrao_esperado = "§  " 
 
-    # Usamos finditer para encontrar todas as ocorrências
-    for match in re.finditer(padrao_paragrafo, texto_completo):
-        pos_inicio_match = match.start()
-        # Pega os 3 caracteres a partir do § (o próprio § e os dois seguintes)
-        # Adiciona verificação para não ir além do fim do texto
+    # --- MUDANÇA 3: Regex agora só busca '§' no INÍCIO da linha (com re.MULTILINE) ---
+    # O ^\s* garante que estamos pegando apenas parágrafos que começam uma linha (com ou sem indentação)
+    for match in re.finditer(r'^\s*§', texto_completo, re.MULTILINE):
+        # Pega o texto a partir do '§' (ignorando a indentação)
+        # Encontra a posição do § dentro do match (ex: em "\t\t§")
+        pos_simbolo_no_match = match.group(0).rfind('§')
+        # Calcula a posição real do § no texto completo
+        pos_inicio_match = match.start() + pos_simbolo_no_match
+        
         trecho_encontrado = texto_completo[pos_inicio_match : min(pos_inicio_match + 3, len(texto_completo))]
 
-        # Verifica se o trecho encontrado tem pelo menos 3 caracteres (para § e dois espaços)
-        # Ou se o § está exatamente no final do texto (o que também seria um erro de espaçamento)
         if len(trecho_encontrado) < 3 or trecho_encontrado != padrao_esperado:
-            # Captura um contexto mínimo para identificação do local do erro
             contexto_curto = texto_completo[pos_inicio_match : min(pos_inicio_match + 15, len(texto_completo))]
             contexto_curto = contexto_curto.split('\n')[0].strip() # Pega só a primeira linha do contexto
 
-            msg = f"Espaçamento incorreto após '§': '{contexto_curto}...'. Esperado: '§  '."
+            msg = f"Espaçamento incorreto após '§': '{contexto_curto}...'. Esperado: '§--'."
             erros.append(msg)
 
     if not erros:
-        return {"status": "OK", "detalhe": "O espaçamento após o símbolo de parágrafo (§) está correto."}
+        return {"status": "OK", "detalhe": "O espaçamento após o símbolo de parágrafo (§ no início de linha) está correto."}
     else:
         return {"status": "FALHA", "detalhe": erros[:5]}
     
@@ -298,8 +298,6 @@ def auditar_data_sem_zero_esquerda(texto_completo):
     """
     erros = []
     
-    # Padrão para encontrar datas (case-insensitive para 'de' e 'mês')
-    # Captura: (dia), (mês), (ano)
     padrao_data = re.compile(
         r"(\d{1,2})\s+de\s+([a-zA-ZçÇãÃõÕáÁéÉíÍóÓúÚ]+)\s+de\s+(\d{4})",
         re.IGNORECASE
@@ -316,9 +314,7 @@ def auditar_data_sem_zero_esquerda(texto_completo):
         if mes_str.lower() not in meses_validos:
             continue
 
-        # A REGRA: Se tem 2 dígitos E começa com 0
         if len(dia_str) == 2 and dia_str.startswith('0'):
-            # Constrói a sugestão correta (ex: '09' -> '9')
             dia_correto = str(int(dia_str)) 
             sugestao = f"'{dia_correto} de {mes_str} de {ano_str}'"
             erro_msg = f"Data com dia formatado incorretamente (zero à esquerda): '{match.group(0)}'. O correto seria: {sugestao}."
@@ -331,6 +327,7 @@ def auditar_data_sem_zero_esquerda(texto_completo):
 
 
 # --- NOVAS REGRAS PARA O ANEXO ---
+# (As regras do anexo permanecem inalteradas, pois já estavam corretas)
 
 def auditar_sequencia_capitulos_anexo(texto_completo):
     """(NOVA REGRA - Anexo) Verifica a sequência dos Capítulos (I, II, III...)."""
@@ -430,7 +427,8 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
     # Grupo 1: O item inteiro (Art, §, Inciso, Alínea)
     # Grupo 2: O marcador (Art. 1º, § 1º, I, a))
     padrao_itens = re.compile(
-        r"^(?:[ \t]*)((Art\.\s*\d+[º\.]|Parágrafo\s+único\.|§\s*\d+[º\.])|([IVXLCDM]+[\s\-–])|([a-z]\)))(.*)", 
+        # --- CORREÇÃO DE REGEX --- Aceita º, ° ou .
+        r"^(?:[ \t]*)((Art\.\s*\d+[º°\.]|Parágrafo\s+único\.|§\s*\d+[º°\.])|([IVXLCDM]+[\s\-–])|([a-z]\)))(.*)", 
         re.MULTILINE | re.IGNORECASE
     )
     
