@@ -39,7 +39,9 @@ def auditar_preambulo(texto_completo):
                 inicio_preambulo_texto = "\n".join(linhas_limpas[i+1:])
                 break
         
-        match_artigo1 = re.search(r'Art\.\s*1[ºo]', inicio_preambulo_texto, re.IGNORECASE)
+        # --- CORREÇÃO DE REGEX ---
+        # Adicionado o símbolo de grau (°) para aceitar Art. 1°
+        match_artigo1 = re.search(r'Art\.\s*1[ºo°]', inicio_preambulo_texto, re.IGNORECASE)
         
         texto_preambulo = inicio_preambulo_texto[:match_artigo1.start()].strip()
 
@@ -50,9 +52,8 @@ def auditar_preambulo(texto_completo):
     if not texto_preambulo:
         return {"status": "FALHA", "detalhe": [{"mensagem": "O texto do preâmbulo parece estar vazio.", "contexto": ""}]}
 
-    # --- LÓGICA DE VERIFICAÇÃO ATUALIZADA ---
-    # Normaliza o texto do preâmbulo para uma única linha, removendo quebras de linha
-    # e espaços duplicados, para verificar o início e o fim.
+    # --- LÓGICA DE VERIFICAÇÃO ATUALIZADA (Para parágrafo único) ---
+    # Normaliza o texto do preâmbulo para uma única linha
     texto_preambulo_normalizado = re.sub(r'\s+', ' ', texto_preambulo).strip()
 
     # Passo 2: Verificar a Autoridade (Início)
@@ -77,10 +78,8 @@ def auditar_preambulo(texto_completo):
     padrao_correto_fim = "o Colegiado resolveu:"
 
     if not texto_preambulo_normalizado.endswith(padrao_correto_fim):
-        # Pega os últimos 50 caracteres para mostrar o erro
         contexto_fim = texto_preambulo_normalizado[-50:]
         
-        # Verifica se o erro é apenas de maiúscula/minúscula
         if texto_preambulo_normalizado.lower().endswith(padrao_correto_fim):
             erros.append(f"A terminação do preâmbulo deve ser '{padrao_correto_fim}' (exatamente, com 'o' minúsculo). Foi encontrado: '...{contexto_fim}'")
         else:
@@ -115,18 +114,18 @@ def auditar_numeracao_artigos(texto_completo):
 
         # --- VALIDAÇÃO PARA ARTIGOS DE 1 A 9 ---
         if 1 <= numero_artigo <= 9:
-            padrao_esperado = "º  "
+            padrao_esperado = "°  "
     
             if not trecho_apos_artigo.startswith(padrao_esperado):
                 # Análise do erro específico
                 if trecho_apos_artigo.startswith('°'):
-                    erros.append(f"No 'Art. {numero_artigo}', o símbolo ordinal está incorreto. Use 'º' em vez de '°'.")
-                elif not trecho_apos_artigo.startswith('º'):
-                    erros.append(f"O 'Art. {numero_artigo}' deve ser seguido pelo ordinal 'º'.")
-                elif not trecho_apos_artigo.startswith('º  '):
-                    erros.append(f"Após 'Art. {numero_artigo}º', deve haver exatamente dois espaços.")
+                    erros.append(f"No 'Art. {numero_artigo}', o símbolo ordinal está incorreto. Use '°' em vez de 'º'.")
+                elif not trecho_apos_artigo.startswith('°'):
+                    erros.append(f"O 'Art. {numero_artigo}' deve ser seguido pelo ordinal '°'.")
+                elif not trecho_apos_artigo.startswith('°  '):
+                    erros.append(f"Após 'Art. {numero_artigo}°', deve haver exatamente dois espaços.")
                 else:
-                     erros.append(f"A formatação após 'Art. {numero_artigo}' está incorreta. Esperado: 'º' seguido de dois espaços.")
+                     erros.append(f"A formatação após 'Art. {numero_artigo}' está incorreta. Esperado: '°' seguido de dois espaços.")
 
         # --- VALIDAÇÃO PARA ARTIGOS 10 EM DIANTE ---
         elif numero_artigo >= 10:
@@ -134,8 +133,8 @@ def auditar_numeracao_artigos(texto_completo):
             
             if not trecho_apos_artigo.startswith(padrao_esperado):
                 # Análise do erro específico
-                if trecho_apos_artigo.startswith('º'):
-                    erros.append(f"O 'Art. {numero_artigo}' não deve usar o ordinal 'º', mas sim um ponto final (.).")
+                if trecho_apos_artigo.startswith('°'):
+                    erros.append(f"O 'Art. {numero_artigo}' não deve usar o ordinal '°', mas sim um ponto final (.).")
                 elif not trecho_apos_artigo.startswith('.'):
                     erros.append(f"O 'Art. {numero_artigo}' deve ser seguido por um ponto final (.).")
                 elif not trecho_apos_artigo.startswith('.  '):
