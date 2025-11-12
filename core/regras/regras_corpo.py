@@ -323,11 +323,8 @@ def auditar_data_sem_zero_esquerda(texto_completo):
     else:
         return {"status": "FALHA", "detalhe": erros[:5]}
 
-
-# --- NOVAS REGRAS PARA O ANEXO ---
-
 def auditar_sequencia_capitulos_anexo(texto_completo):
-    """(NOVA REGRA - Anexo) Verifica a sequência dos Capítulos (I, II, III...)."""
+    """(Anexo) Verifica a sequência dos Capítulos (I, II, III...)."""
     erros = []
     matches = re.finditer(r'^\s*CAPÍTULO\s+([IVXLCDM]+)', texto_completo, re.MULTILINE)
     
@@ -353,7 +350,7 @@ def auditar_sequencia_capitulos_anexo(texto_completo):
         return {"status": "FALHA", "detalhe": erros}
 
 def auditar_sequencia_secoes_anexo(texto_completo):
-    """(NOVA REGRA - Anexo) Verifica a sequência das Seções (I, II, III...) dentro de cada Capítulo."""
+    """(Anexo) Verifica a sequência das Seções (I, II, III...) dentro de cada Capítulo."""
     erros = []
     # Divide o texto por Capítulos para analisar as seções de cada um
     blocos_capitulo = re.split(r'^\s*CAPÍTULO\s+[IVXLCDM]+', texto_completo, flags=re.MULTILINE)
@@ -388,7 +385,7 @@ def auditar_sequencia_secoes_anexo(texto_completo):
         return {"status": "FALHA", "detalhe": erros}
 
 def auditar_sequencia_artigos_anexo(texto_completo):
-    """(NOVA REGRA - Anexo) Verifica se a sequência de Artigos (1, 2, 3...) está correta (contínua)."""
+    """(Anexo) Verifica se a sequência de Artigos (1, 2, 3...) está correta (contínua)."""
     erros = []
     matches = re.finditer(r'Art\.\s*(\d+)', texto_completo)
     artigos = [int(match.group(1)) for match in matches]
@@ -485,8 +482,6 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
                     tipo_proximo = "Inciso"
                 elif re.match(r'^[a-z]\)', marcador_proximo):
                     tipo_proximo = "Alinea"
-
-            # --- LÓGICA CORRIGIDA (BASEADA NO SEU ÚLTIMO EXEMPLO) ---
             
             # Se o próximo item é do *mesmo* tipo (ex: Inciso I -> Inciso II)
             # OU se é uma Alínea seguida por um Inciso (ex: b) -> VIII -)
@@ -503,7 +498,6 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
                 # É o item final da lista. Deve terminar com '.'
                 if not linha_completa.endswith('.'):
                     erros.append(f"Pontuação de Fim de Lista Incorreta: '{linha_completa}' deveria terminar com '.' (ponto final), pois é o último item do seu bloco.")
-            # --- FIM DA CORREÇÃO ---
 
     if not erros:
         return {"status": "OK", "detalhe": "A pontuação hierárquica do Anexo está correta."}
