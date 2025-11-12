@@ -99,8 +99,7 @@ def auditar_numeracao_artigos(texto_completo):
     """
     erros = []
     
-    # --- MUDANÇA 1: Regex agora só busca artigos no INÍCIO da linha (com re.MULTILINE) ---
-    # O ^\s* garante que estamos pegando apenas artigos que começam uma linha (com ou sem indentação)
+    # Regex agora só busca artigos no INÍCIO da linha (com re.MULTILINE)
     matches = re.finditer(r'^\s*Art\.\s*(\d+)', texto_completo, re.MULTILINE)
 
     for match in matches:
@@ -113,7 +112,7 @@ def auditar_numeracao_artigos(texto_completo):
         # --- VALIDAÇÃO PARA ARTIGOS DE 1 A 9 ---
         if 1 <= numero_artigo <= 9:
             
-            # --- MUDANÇA 2: Agora '°' (grau) é OBRIGATÓRIO e 'º' (ordinal) é um ERRO ---
+            # Agora '°' (grau) é OBRIGATÓRIO
             padrao_esperado = "°  " # Símbolo de grau
     
             if not trecho_apos_artigo.startswith(padrao_esperado):
@@ -267,8 +266,7 @@ def auditar_espacamento_paragrafo(texto_completo):
     erros = []
     padrao_esperado = "§  " 
 
-    # --- MUDANÇA 3: Regex agora só busca '§' no INÍCIO da linha (com re.MULTILINE) ---
-    # O ^\s* garante que estamos pegando apenas parágrafos que começam uma linha (com ou sem indentação)
+    # Regex agora só busca '§' no INÍCIO da linha (com re.MULTILINE)
     for match in re.finditer(r'^\s*§', texto_completo, re.MULTILINE):
         # Pega o texto a partir do '§' (ignorando a indentação)
         # Encontra a posição do § dentro do match (ex: em "\t\t§")
@@ -282,7 +280,7 @@ def auditar_espacamento_paragrafo(texto_completo):
             contexto_curto = texto_completo[pos_inicio_match : min(pos_inicio_match + 15, len(texto_completo))]
             contexto_curto = contexto_curto.split('\n')[0].strip() # Pega só a primeira linha do contexto
 
-            msg = f"Espaçamento incorreto após '§': '{contexto_curto}...'. Esperado: '§--'."
+            msg = f"Espaçamento incorreto após '§': '{contexto_curto}...'. Esperado: '§  '."
             erros.append(msg)
 
     if not erros:
@@ -324,6 +322,9 @@ def auditar_data_sem_zero_esquerda(texto_completo):
         return {"status": "OK", "detalhe": "Nenhuma data com formatação de dia incorreta (zero à esquerda) foi encontrada."}
     else:
         return {"status": "FALHA", "detalhe": erros[:5]}
+
+
+# --- NOVAS REGRAS PARA O ANEXO ---
 
 def auditar_sequencia_capitulos_anexo(texto_completo):
     """(NOVA REGRA - Anexo) Verifica a sequência dos Capítulos (I, II, III...)."""
@@ -420,10 +421,8 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
     erros = []
     
     # Padrão para encontrar *todos* os itens estruturais
-    # Grupo 1: O item inteiro (Art, §, Inciso, Alínea)
-    # Grupo 2: O marcador (Art. 1º, § 1º, I, a))
     padrao_itens = re.compile(
-        # --- CORREÇÃO DE REGEX --- Aceita º, ° ou .
+        # Aceita º, ° ou . para art/§
         r"^(?:[ \t]*)((Art\.\s*\d+[º°\.]|Parágrafo\s+único\.|§\s*\d+[º°\.])|([IVXLCDM]+[\s\-–])|([a-z]\)))(.*)", 
         re.MULTILINE | re.IGNORECASE
     )
@@ -451,7 +450,6 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
         proximo_match = matches[i + 1] if (i + 1) < len(matches) else None
         
         # --- REGRA 1: ABERTURA (Dois-Pontos ':') ---
-        # Verifica se o *próximo* item é uma subdivisão
         inicia_subdivisao = False
         if proximo_match:
             marcador_proximo = proximo_match.group(1).strip()
@@ -467,7 +465,6 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
             continue # Regra 1 verificada, pular para o próximo item
             
         # --- REGRAS 2 (Declaração) e 3 (Lista) ---
-        # Se não é abertura, é declaração ou lista.
         
         # Itens do tipo Artigo/Parágrafo (Regra C: Declaração)
         if tipo_atual == "Artigo/Paragrafo":
@@ -489,25 +486,24 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
                 elif re.match(r'^[a-z]\)', marcador_proximo):
                     tipo_proximo = "Alinea"
 
-            # Se o próximo item é do *mesmo* tipo (ex: Inciso I seguido de Inciso II)
-            if proximo_match and tipo_proximo == tipo_atual:
-                # É um item intermediário. Deve terminar com ';'
-                if not linha_completa.endswith(';'):
-                    erros.append(f"Pontuação de Lista Incorreta: '{linha_completa}' deve terminar com ';'.")
+            # --- LÓGICA CORRIGIDA (BASEADA NO SEU ÚLTIMO EXEMPLO) ---
+            
+            # Se o próximo item é do *mesmo* tipo (ex: Inciso I -> Inciso II)
+            # OU se é uma Alínea seguida por um Inciso (ex: b) -> VIII -)
+            if (proximo_match and tipo_proximo == tipo_atual) or \
+               (tipo_atual == "Alinea" and tipo_proximo == "Inciso"):
+                
+                # É um item intermediário OU penúltimo.
+                # Deve terminar com ';', '; e', ou '; ou'.
+                if not (linha_completa.endswith(';') or linha_completa.endswith('; e') or linha_completa.endswith('; ou')):
+                    erros.append(f"Pontuação de Lista Incorreta: '{linha_completa}' deve terminar com ';', '; e', ou '; ou'.")
 
-            # Se é o último item da lista (não há próximo item, ou o próximo é de tipo DIFERENTE)
+            # Se é o último item da lista (não há próximo item, ou o próximo é de tipo MAIOR, como Artigo/Parágrafo)
             else:
-                # Deve ser o "penúltimo" ou "último"
-                if linha_completa.endswith('; e') or linha_completa.endswith('; ou'):
-                    pass # Está correto (penúltimo)
-                elif linha_completa.endswith('.'):
-                    pass # Está correto (último)
-                else:
-                    # Se não é nem penúltimo nem último, mas é o fim do bloco, está errado.
-                    erro_msg = f"Pontuação de Fim de Lista Incorreta: '{linha_completa}' deveria terminar com '.' (se for o último) ou '; e' / '; ou' (se for o penúltimo)."
-                    # Evitar duplicados da regra acima (de ';')
-                    if not linha_completa.endswith(';'):
-                         erros.append(erro_msg)
+                # É o item final da lista. Deve terminar com '.'
+                if not linha_completa.endswith('.'):
+                    erros.append(f"Pontuação de Fim de Lista Incorreta: '{linha_completa}' deveria terminar com '.' (ponto final), pois é o último item do seu bloco.")
+            # --- FIM DA CORREÇÃO ---
 
     if not erros:
         return {"status": "OK", "detalhe": "A pontuação hierárquica do Anexo está correta."}
