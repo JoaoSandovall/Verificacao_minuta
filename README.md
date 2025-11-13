@@ -6,33 +6,53 @@ Ferramenta em Python e Streamlit para validar automaticamente a formatação de 
 
 * **Interface Web:** Aplicação simples e interativa.
 * **Entrada Dupla:** Aceita texto colado ou upload de arquivos (`.txt`, `.docx`, `.pdf`).
-* **Análise Estrutural:** Identifica a separação entre a Resolução e o `ANEXO`, aplicando regras de formatação específicas para cada parte.
+* **Análise Estrutural Inteligente:** Identifica a separação entre a **Resolução Principal** e o **Anexo**, aplicando conjuntos de regras de pontuação e sequência completamente diferentes para cada parte.
 * **Relatório Imediato:** Mostra instantaneamente os "Itens com Erros" e "Itens Corretos".
 * **Limpeza Automática:** Remove marcas d'água (ex: "MINUTA DE DOCUMENTO") antes da análise.
 
 ## 📋 Regras de Auditoria Implementadas
 
-### Cabeçalho
+A análise é dividida em três partes: regras que se aplicam a todo o documento, regras estritas para a Resolução e regras hierárquicas para o Anexo.
+
+### Regras Gerais (Aplicadas em Todo o Documento)
+
 1.  **Brasão / Nome do Ministério:** Valida se o documento começa com `MINISTÉRIO DA INTEGRAÇÃO E DO DESENVOLVIMENTO REGIONAL`.
-2.  **Epígrafe (Formato e Data):** Checa a estrutura `RESOLUÇÃO CONDEL Nº ...`, exigindo maiúsculas (incluindo o mês) e validando a data.
+2.  **Epígrafe (Formato e Data):** Checa a estrutura `(MINUTA )?RESOLUÇÃO CONDEL... Nº ...`.
+    * Permite variações como `CONDEL/SUDECO` ou `CONDEL/SUDENE`.
+    * Aceita `xx` (maiúsculo ou minúsculo) no lugar do número, dia ou mês.
+    * Verifica se o mês (se não for `xx`) está em MAIÚSCULO e se a data é válida.
 3.  **Ementa (Verbo Inicial):** Garante que a ementa comece com um verbo de ação aceito (ex: "Aprova", "Altera", "Dispõe").
+4.  **Artigos (Formato Numeração):** Valida o formato dos artigos que **iniciam uma linha**:
+    * **Art. 1° a 9°:** Devem usar o símbolo de grau (`°`) e ser seguidos por dois espaços (ex: `Art. 1°  `). O uso do ordinal `º` é marcado como erro.
+    * **Art. 10. em diante:** Devem usar ponto (`.`) e ser seguidos por dois espaços (ex: `Art. 10.  `).
+5.  **Parágrafos (§ Espaçamento):** Valida que o símbolo `§` (Parágrafo), quando **inicia uma linha**, é seguido por exatamente dois espaços (ex: `§ 1°  `).
+6.  **Datas (Zero à Esquerda):** Procura por datas no formato "dd de mês de aaaa" (ex: "09 de setembro de 2025") e reporta um erro, sugerindo a forma correta ("9 de setembro de 2025").
+7.  **Siglas (Uso do travessão):** Procura por siglas formatadas incorretamente entre parênteses, ex: `(SIGLA)`.
+8.  **Anexo (Identificação):** Valida se a linha `ANEXO` está formatada corretamente (sozinha, em maiúsculas).
 
-### Corpo da Resolução
-4.  **Preâmbulo (Estrutura):** Analisa o preâmbulo, verificando se inicia com a autoridade correta (ex: `O PRESIDENTE DO CONSELHO...`) e se termina exatamente com `RESOLVEU:`.
-5.  **Artigos (Numeração):** Confere o padrão de numeração:
-    * `Art. 1º ` (com `º` e dois espaços).
-    * `Art. 10. ` (com `.` e dois espaços).
-6.  **Parágrafos (§ Espaçamento):** Verifica se o símbolo `§` é seguido por exatamente dois espaços.
-7.  **Incisos (Pontuação):** Valida a sequência de numerais romanos (I, II, III...) e a pontuação correta (`;`, `: (para alíneas)`, `; e (penúltimo)`, `. (último)`).
-8.  **Alíneas (Pontuação):** Valida a sequência de letras (a, b, c...) e a pontuação correta (`;`, `; e (penúltima)`, `. (última)`).
-9.  **Siglas (Uso do travessão):** Procura por siglas incorretamente formatadas entre parênteses, ex: `(SIGLA)`.
+### Regras da Resolução Principal
 
-### Rodapé e Anexo
-10. **Bloco de Assinatura:** Checa o padrão `NOME DO SIGNATÁRIO` (maiúsculas) seguido pelo `Cargo` (normal).
-11. **Fecho de Vigência:** Verifica se a cláusula corresponde *exatamente* a um dos padrões:
+(Aplicadas apenas ao texto **antes** da linha `ANEXO`)
+
+1.  **Preâmbulo (Estrutura):** Verifica se o parágrafo do preâmbulo começa com uma das Autoridades (`O PRESIDENTE...`) e termina exatamente com a frase `o Colegiado resolveu:` (em minúsculo).
+2.  **Bloco de Assinatura:** Valida se o bloco de assinatura contém **apenas** o nome do signatário em maiúsculas (ex: `ANTONIO WALDEZ GÓES DA SILVA`) e se **não há** linhas de cargo abaixo dele.
+3.  **Fecho de Vigência:** Verifica se a cláusula corresponde exatamente a um dos padrões:
     * `Esta Resolução entra em vigor na data de sua publicação.`
-    * `Esta Resolução entra em vigor em [dia]º de [mês minúsculo] de [ano].`
-12. **Anexo:** Identifica se a linha `ANEXO` está formatada corretamente (sozinha, em maiúsculas).
+    * `Esta Resolução entra em vigor em [dia]° de [mês minúsculo] de [ano].`
+4.  **Incisos (Pontuação Estrita):** Valida a sequência (I, II, III...) e a pontuação estrita: `;` para itens intermediários, `; e` para o penúltimo, e `.` para o último.
+5.  **Alíneas (Pontuação Estrita):** Valida a sequência (a, b, c...) e a pontuação estrita: `;` para itens intermediários, `; e` para o penúltimo, e `.` para o último.
+
+### Regras Específicas do Anexo
+
+(Aplicadas apenas ao texto **depois** da linha `ANEXO`)
+
+1.  **Sequência de Capítulos:** Valida se a numeração romana (I, II, III...) dos `CAPÍTULOS` é contínua e não pula números.
+2.  **Sequência de Seções:** Valida se a numeração romana (I, II, III...) das `Seções` **reinicia** corretamente dentro de cada novo Capítulo.
+3.  **Sequência de Artigos:** Valida se a numeração (1°, 2°, 3°... 10., 11...) dos `Art.` é contínua do início ao fim do Anexo.
+4.  **Pontuação Hierárquica:** Substitui as regras estritas por uma lógica inteligente que entende o contexto:
+    * **Regra de Abertura (`:`)**: Verifica se Artigos, Parágrafos ou Incisos que abrem uma nova subdivisão (ex: um Art. seguido por Incisos) terminam corretamente com dois-pontos.
+    * **Regra de Declaração (`.`)**: Verifica se Artigos e Parágrafos que são declarações únicas (não abrem listas) terminam com ponto final.
+    * **Regra de Lista (`;`, `; e`, `; ou`, `.`)**: Verifica Incisos e Alíneas com base no que vem *depois*. Por exemplo, uma alínea `b)` seguida por um `Inciso III` pode terminar com `;`, enquanto uma alínea `b)` seguida por um `§ 1º` deve terminar com `.`.
 
 ## 🚀 Como Executar Localmente
 
@@ -77,3 +97,9 @@ Ferramenta em Python e Streamlit para validar automaticamente a formatação de 
     ```
 
 2.  Abra o seu navegador no endereço `http://localhost:8501`.
+
+## 🐞 Solução de Erros (Streamlit Cloud)
+
+Se você ver um erro sobre `locale 'pt_BR.UTF-8' não encontrado` ao fazer o deploy no Streamlit Cloud, é porque o servidor Linux padrão não possui o pacote de idioma português.
+
+**Solução:** Este repositório já inclui um arquivo `packages.txt` com o conteúdo `locales-all`. O Streamlit irá ler este arquivo automaticamente e instalar todos os pacotes de idioma necessários, corrigindo o erro.
