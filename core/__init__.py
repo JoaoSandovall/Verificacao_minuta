@@ -1,12 +1,11 @@
 from .regras.regras_cabecalho import auditar_cabecalho_ministerio, auditar_epigrafe, auditar_ementa
 from .regras.regras_corpo import (
     auditar_preambulo, auditar_numeracao_artigos, 
-    auditar_pontuacao_incisos, # Regra antiga (Estrita)
+    auditar_pontuacao_incisos, 
     auditar_uso_siglas, 
-    auditar_pontuacao_alineas, # Regra antiga (Estrita)
+    auditar_pontuacao_alineas, 
     auditar_espacamento_paragrafo, 
     auditar_data_sem_zero_esquerda,
-    # Novas regras para o Anexo
     auditar_sequencia_capitulos_anexo,
     auditar_sequencia_secoes_anexo,
     auditar_sequencia_artigos_anexo,

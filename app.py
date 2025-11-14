@@ -227,4 +227,3 @@ with tab_arquivo:
                 texto_completo = extrair_texto(arquivo_anexado)
                 if texto_completo:
                     analisar_e_exibir(texto_completo) # Chama a função centralizada
-                # else: a função extrair_texto já mostra o erro
