@@ -39,13 +39,12 @@ def auditar_preambulo(texto_completo):
                 inicio_preambulo_texto = "\n".join(linhas_limpas[i+1:])
                 break
         
-        # Regex atualizada para aceitar º, o, ou °
         match_artigo1 = re.search(r'Art\.\s*1[ºo°]', inicio_preambulo_texto, re.IGNORECASE)
         
         texto_preambulo = inicio_preambulo_texto[:match_artigo1.start()].strip()
 
     except (AttributeError, IndexError):
-        # Retorna o erro no formato de dicionário para manter a consistência
+        # Retorna o erro no formato de dicionário
         return {"status": "FALHA", "detalhe": [{"mensagem": "Não foi possível isolar o texto do preâmbulo para análise. Verifique se a ementa e o Art. 1º existem.", "contexto": ""}]}
 
     if not texto_preambulo:
@@ -54,7 +53,7 @@ def auditar_preambulo(texto_completo):
     # Lógica de verificação para parágrafo único
     texto_preambulo_normalizado = re.sub(r'\s+', ' ', texto_preambulo).strip()
 
-    # Passo 2: Verificar a Autoridade (Início)
+    # Passo 2: Verificar a Autoridade
     autoridades_validas = [
         "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DO CENTRO-OESTE - CONDEL/SUDECO",
         "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DA AMAZÔNIA - CONDEL/SUDAM",
