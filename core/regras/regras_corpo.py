@@ -39,6 +39,7 @@ def auditar_preambulo(texto_completo):
                 inicio_preambulo_texto = "\n".join(linhas_limpas[i+1:])
                 break
         
+        # Regex atualizada para aceitar º, o, ou °
         match_artigo1 = re.search(r'Art\.\s*1[ºo°]', inicio_preambulo_texto, re.IGNORECASE)
         
         texto_preambulo = inicio_preambulo_texto[:match_artigo1.start()].strip()
@@ -259,33 +260,77 @@ def auditar_pontuacao_alineas(texto_completo):
     else:
         return {"status": "FALHA", "detalhe": erros[:5]}
 
+# --- FUNÇÃO ATUALIZADA ---
 def auditar_espacamento_paragrafo(texto_completo):
-    """(REGRA - Resolução e Anexo) Verifica os 2 espaços após o '§' que INICIA uma linha."""
-    
+    """
+    (REGRA - Resolução e Anexo)
+    Verifica a numeração e o espaçamento dos parágrafos que INICIAM uma linha.
+    - § 1° a 9°: Deve ser '§ N°  ' (com ° e dois espaços).
+    - § 10. em diante: Deve ser '§ NN.  ' (com . e dois espaços).
+    - Parágrafo único.: Deve ter dois espaços após o ponto.
+    - Parágrafos no meio do texto (ex: "no § 1°") são ignorados.
+    """
     erros = []
-    padrao_esperado = "§  " 
+    
+    # --- REGRA 1: Parágrafos numerados (§ 1°, § 10.) ---
+    
+    # Padrão: Início da linha, §, UM espaço, número
+    # (Usamos \s+ para flexibilidade, mas o padrão visual é um espaço)
+    matches_numerados = re.finditer(r'^\s*§\s+(\d+)', texto_completo, re.MULTILINE)
 
-    # Regex agora só busca '§' no INÍCIO da linha (com re.MULTILINE)
-    for match in re.finditer(r'^\s*§', texto_completo, re.MULTILINE):
-        # Pega o texto a partir do '§' (ignorando a indentação)
-        # Encontra a posição do § dentro do match (ex: em "\t\t§")
-        pos_simbolo_no_match = match.group(0).rfind('§')
-        # Calcula a posição real do § no texto completo
-        pos_inicio_match = match.start() + pos_simbolo_no_match
+    for match in matches_numerados:
+        numero_paragrafo_str = match.group(1)
+        numero_paragrafo = int(numero_paragrafo_str)
         
-        trecho_encontrado = texto_completo[pos_inicio_match : min(pos_inicio_match + 3, len(texto_completo))]
+        pos_fim_match = match.end()
+        # Pega os 3 caracteres *após o número* (ex: "°  " ou ".  ")
+        trecho_apos_numero = texto_completo[pos_fim_match : pos_fim_match + 3]
 
-        if len(trecho_encontrado) < 3 or trecho_encontrado != padrao_esperado:
-            contexto_curto = texto_completo[pos_inicio_match : min(pos_inicio_match + 15, len(texto_completo))]
-            contexto_curto = contexto_curto.split('\n')[0].strip() # Pega só a primeira linha do contexto
+        # --- VALIDAÇÃO PARA § 1 A 9 ---
+        if 1 <= numero_paragrafo <= 9:
+            padrao_esperado = "°  " # Símbolo de grau + 2 espaços
+    
+            if not trecho_apos_numero.startswith(padrao_esperado):
+                if trecho_apos_numero.startswith('º'):
+                    erros.append(f"No '§ {numero_paragrafo}', o símbolo ordinal está incorreto. Use '°' (símbolo de grau) em vez de 'º' (ordinal).")
+                elif not trecho_apos_numero.startswith('°'):
+                    erros.append(f"O '§ {numero_paragrafo}' deve ser seguido pelo ordinal '°'.")
+                elif not trecho_apos_numero.startswith('°  '):
+                    erros.append(f"Após '§ {numero_paragrafo}°', deve haver exatamente dois espaços.")
+                else:
+                    erros.append(f"A formatação após '§ {numero_paragrafo}' está incorreta. Esperado: '°' seguido de dois espaços.")
 
-            msg = f"Espaçamento incorreto após '§': '{contexto_curto}...'. Esperado: '§  '."
-            erros.append(msg)
+        # --- VALIDAÇÃO PARA § 10 EM DIANTE ---
+        elif numero_paragrafo >= 10:
+            padrao_esperado = ".  " # Ponto + 2 espaços
+            
+            if not trecho_apos_numero.startswith(padrao_esperado):
+                if trecho_apos_numero.startswith('°') or trecho_apos_numero.startswith('º'):
+                    erros.append(f"O '§ {numero_paragrafo}' não deve usar o ordinal '°' ou 'º', mas sim um ponto final (.).")
+                elif not trecho_apos_numero.startswith('.'):
+                    erros.append(f"O '§ {numero_paragrafo}' deve ser seguido por um ponto final (.).")
+                elif not trecho_apos_numero.startswith('.  '):
+                    erros.append(f"Após '§ {numero_paragrafo}.', deve haver exatamente dois espaços.")
+                else:
+                    erros.append(f"A formatação após '§ {numero_paragrafo}' está incorreta. Esperado: '.' seguido de dois espaços.")
+
+    # --- REGRA 2: Parágrafo único. ---
+    
+    # Padrão: Início da linha, "Parágrafo único."
+    matches_unicos = re.finditer(r'^\s*Parágrafo\s+único\.', texto_completo, re.MULTILINE)
+    
+    for match in matches_unicos:
+        pos_fim_match = match.end()
+        trecho_apos_paragrafo = texto_completo[pos_fim_match : pos_fim_match + 2] # Só precisamos de 2 espaços
+        padrao_esperado = "  " # Dois espaços
+        
+        if not trecho_apos_paragrafo.startswith(padrao_esperado):
+            erros.append("Após 'Parágrafo único.', deve haver exatamente dois espaços.")
 
     if not erros:
-        return {"status": "OK", "detalhe": "O espaçamento após o símbolo de parágrafo (§ no início de linha) está correto."}
+        return {"status": "OK", "detalhe": "O espaçamento dos parágrafos (no início de linha) está correto."}
     else:
-        return {"status": "FALHA", "detalhe": erros[:5]}
+        return {"status": "FALHA", "detalhe": list(set(erros))[:5]}
     
 def auditar_data_sem_zero_esquerda(texto_completo):
     """
@@ -321,6 +366,9 @@ def auditar_data_sem_zero_esquerda(texto_completo):
         return {"status": "OK", "detalhe": "Nenhuma data com formatação de dia incorreta (zero à esquerda) foi encontrada."}
     else:
         return {"status": "FALHA", "detalhe": erros[:5]}
+
+
+# --- NOVAS REGRAS PARA O ANEXO ---
 
 def auditar_sequencia_capitulos_anexo(texto_completo):
     """(Anexo) Verifica a sequência dos Capítulos (I, II, III...)."""
