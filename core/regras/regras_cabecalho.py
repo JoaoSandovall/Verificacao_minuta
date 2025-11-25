@@ -31,7 +31,7 @@ def auditar_epigrafe(texto_completo):
     
     padrao_epigrafe = re.compile(
         r"(MINUTA )?"
-        r"RESOLUÇÃO CONDEL(?:/SUDECO|/SUDENE|/SUDAM)? Nº "
+        r"RESOLUÇÃO CONDEL(?:/SUDECO|/SUDENE|/SUDAM)? N° "
         r"(\d+|xx|XX),"  # Permite número ou "xx" / "XX"
         r"\s+DE\s+(\d{1,2}|xx|XX)\s+DE\s+" # Permite dia ou "xx" / "XX"
         r"(\w+|xx|XX)\s+DE\s+(\d{4})" # Permite MÊS ou "xx" / "XX"
@@ -49,7 +49,7 @@ def auditar_epigrafe(texto_completo):
             contexto = match_flexivel.group(0).strip()
             return {"status": "FALHA", "detalhe": [f"A epígrafe foi encontrada, mas sua formatação está incorreta. Verifique se está tudo em maiúsculas (exceto 'xx', se usado). Encontrado: '{contexto}'"]}
         else:
-            return {"status": "FALHA", "detalhe": ["A linha da epígrafe não foi encontrada ou está fora do padrão 'RESOLUÇÃO CONDEL Nº..., DE...DE...DE...'."]}
+            return {"status": "FALHA", "detalhe": ["A linha da epígrafe não foi encontrada ou está fora do padrão 'RESOLUÇÃO CONDEL N°..., DE...DE...DE...'."]}
 
     # Desempacota os 4 grupos: número, dia, mês, ano
     numero_res, dia_str, mes_str, ano_str = match.groups()[1:]

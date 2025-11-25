@@ -1,19 +1,7 @@
 import re
 
 def auditar_anexo(texto_completo):
-    """
-    Verifica se a seção 'ANEXO' existe, se está em maiúsculas
-    e se está sozinha na linha.
-    """
-    
-    # Padrão: 
-    # \n       - nova linha
-    # \s* - espaço em branco opcional no início da linha
-    # (ANEXO)  - A palavra-chave (capturada no grupo 1)
-    # \s* - espaço em branco opcional no fim da linha
-    # (?=\n|$) - Lookahead: garante que a linha termina aqui (sem ler a próxima linha)
-    
-    # Primeiro, procuramos pela forma exata e correta
+
     match_correto = re.search(r'\n\s*(ANEXO)\s*(?=\n|$)', texto_completo)
     
     if match_correto:

@@ -56,9 +56,9 @@ def auditar_preambulo(texto_completo):
 
     # Passo 2: Verificar a Autoridade
     autoridades_validas = [
-        "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DO CENTRO-OESTE - CONDEL/SUDECO",
-        "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DA AMAZÔNIA - CONDEL/SUDAM",
-        "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DO NORDESTE – CONDEL/SUDENE"
+        "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DO CENTRO-OESTE — CONDEL/SUDECO",
+        "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DA AMAZÔNIA — CONDEL/SUDAM",
+        "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DO NORDESTE — CONDEL/SUDENE"
     ]
     
     autoridade_encontrada = False
@@ -260,22 +260,18 @@ def auditar_pontuacao_alineas(texto_completo):
     else:
         return {"status": "FALHA", "detalhe": erros[:5]}
 
-# --- FUNÇÃO ATUALIZADA ---
 def auditar_espacamento_paragrafo(texto_completo):
     """
     (REGRA - Resolução e Anexo)
     Verifica a numeração e o espaçamento dos parágrafos que INICIAM uma linha.
     - § 1° a 9°: Deve ser '§ N°  ' (com ° e dois espaços).
-    - § 10. em diante: Deve ser '§ NN.  ' (com . e dois espaços).
+    - § 10 em diante: Pode ser '§ NN.  ' (com ponto) OU '§ NN  ' (sem ponto), sempre com dois espaços.
     - Parágrafo único.: Deve ter dois espaços após o ponto.
-    - Parágrafos no meio do texto (ex: "no § 1°") são ignorados.
     """
     erros = []
     
-    # --- REGRA 1: Parágrafos numerados (§ 1°, § 10.) ---
+    # --- REGRA 1: Parágrafos numerados (§ 1°, § 10., § 10) ---
     
-    # Padrão: Início da linha, §, UM espaço, número
-    # (Usamos \s+ para flexibilidade, mas o padrão visual é um espaço)
     matches_numerados = re.finditer(r'^\s*§\s+(\d+)', texto_completo, re.MULTILINE)
 
     for match in matches_numerados:
@@ -283,7 +279,7 @@ def auditar_espacamento_paragrafo(texto_completo):
         numero_paragrafo = int(numero_paragrafo_str)
         
         pos_fim_match = match.end()
-        # Pega os 3 caracteres *após o número* (ex: "°  " ou ".  ")
+        # Pega os 3 caracteres *após o número* para verificar a pontuação e espaços
         trecho_apos_numero = texto_completo[pos_fim_match : pos_fim_match + 3]
 
         # --- VALIDAÇÃO PARA § 1 A 9 ---
@@ -300,29 +296,36 @@ def auditar_espacamento_paragrafo(texto_completo):
                 else:
                     erros.append(f"A formatação após '§ {numero_paragrafo}' está incorreta. Esperado: '°' seguido de dois espaços.")
 
-        # --- VALIDAÇÃO PARA § 10 EM DIANTE ---
         elif numero_paragrafo >= 10:
-            padrao_esperado = ".  " # Ponto + 2 espaços
+            # Agora aceitamos flexibilidade: Ponto OU Espaço
             
-            if not trecho_apos_numero.startswith(padrao_esperado):
-                if trecho_apos_numero.startswith('°') or trecho_apos_numero.startswith('º'):
-                    erros.append(f"O '§ {numero_paragrafo}' não deve usar o ordinal '°' ou 'º', mas sim um ponto final (.).")
-                elif not trecho_apos_numero.startswith('.'):
-                    erros.append(f"O '§ {numero_paragrafo}' deve ser seguido por um ponto final (.).")
-                elif not trecho_apos_numero.startswith('.  '):
-                    erros.append(f"Após '§ {numero_paragrafo}.', deve haver exatamente dois espaços.")
-                else:
-                    erros.append(f"A formatação após '§ {numero_paragrafo}' está incorreta. Esperado: '.' seguido de dois espaços.")
+            # 1. Verifica erro crasso: Uso de ordinal (°) em número >= 10
+            if trecho_apos_numero.startswith('°') or trecho_apos_numero.startswith('º'):
+                 erros.append(f"O '§ {numero_paragrafo}' não deve usar o ordinal '°' ou 'º', pois é maior que 9.")
+            
+            # 2. Verifica opção com PONTO (ex: § 10.  )
+            elif trecho_apos_numero.startswith('.'):
+                if not trecho_apos_numero.startswith('.  '):
+                    erros.append(f"Após '§ {numero_paragrafo}.' (com ponto), deve haver exatamente dois espaços.")
+
+            # 3. Verifica opção SEM PONTO (ex: § 10  )
+            # Se começa com espaço ' ', verificamos se tem o segundo espaço
+            elif trecho_apos_numero.startswith(' '):
+                if not trecho_apos_numero.startswith('  '):
+                     erros.append(f"Após '§ {numero_paragrafo}' (sem ponto), deve haver exatamente dois espaços.")
+            
+            # 4. Se não é ponto, nem espaço, nem ordinal (ex: § 10Texto)
+            else:
+                erros.append(f"A formatação após '§ {numero_paragrafo}' está incorreta. Esperado: '.' ou espaço, seguido de dois espaços.")
 
     # --- REGRA 2: Parágrafo único. ---
     
-    # Padrão: Início da linha, "Parágrafo único."
     matches_unicos = re.finditer(r'^\s*Parágrafo\s+único\.', texto_completo, re.MULTILINE)
     
     for match in matches_unicos:
         pos_fim_match = match.end()
-        trecho_apos_paragrafo = texto_completo[pos_fim_match : pos_fim_match + 2] # Só precisamos de 2 espaços
-        padrao_esperado = "  " # Dois espaços
+        trecho_apos_paragrafo = texto_completo[pos_fim_match : pos_fim_match + 2] 
+        padrao_esperado = "  " 
         
         if not trecho_apos_paragrafo.startswith(padrao_esperado):
             erros.append("Após 'Parágrafo único.', deve haver exatamente dois espaços.")
@@ -464,10 +467,10 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
     """
     erros = []
     
-    # Padrão para encontrar *todos* os itens estruturais
+    # CORREÇÃO: Adicionado '?' após [º°\.] e \. para tornar a pontuação de identificação opcional.
+    # Isso garante que '§ 10 ' (sem ponto) seja reconhecido como estrutura, evitando falsos positivos no item anterior.
     padrao_itens = re.compile(
-        # Aceita º, ° ou . para art/§
-        r"^(?:[ \t]*)((Art\.\s*\d+[º°\.]|Parágrafo\s+único\.|§\s*\d+[º°\.])|([IVXLCDM]+[\s\-–])|([a-z]\)))(.*)", 
+        r"^(?:[ \t]*)((Art\.\s*\d+[º°\.]?|Parágrafo\s+único\.?|§\s*\d+[º°\.]?)|([IVXLCDM]+[\s\-–])|([a-z]\)))(.*)", 
         re.MULTILINE | re.IGNORECASE
     )
     
@@ -498,9 +501,14 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
         if proximo_match:
             marcador_proximo = proximo_match.group(1).strip()
             
-            if tipo_atual == "Artigo/Paragrafo" and re.match(r'^[IVXLCDM]+', marcador_proximo):
+            # Verifica se o próximo item é um Inciso
+            proximo_eh_inciso = bool(re.match(r'^[IVXLCDM]+', marcador_proximo))
+            # Verifica se o próximo item é uma Alínea
+            proximo_eh_alinea = bool(re.match(r'^[a-z]\)', marcador_proximo))
+
+            if tipo_atual == "Artigo/Paragrafo" and proximo_eh_inciso:
                 inicia_subdivisao = True # Art/§ seguido por Inciso
-            elif tipo_atual == "Inciso" and re.match(r'^[a-z]\)', marcador_proximo):
+            elif tipo_atual == "Inciso" and proximo_eh_alinea:
                 inicia_subdivisao = True # Inciso seguido por Alínea
         
         if inicia_subdivisao:
