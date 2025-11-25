@@ -5,7 +5,7 @@ import pandas as pd
 from io import BytesIO
 import re
 from core import TODAS_AS_AUDITORIAS
-from core.regras.regras_anexo import auditar_anexo
+from core.regras.anexo import auditar_anexo
 
 def extrair_texto(arquivo_enviado):
     """Extrai texto de diferentes tipos de arquivo."""
