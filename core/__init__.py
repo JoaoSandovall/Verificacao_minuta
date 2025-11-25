@@ -1,54 +1,53 @@
-from .regras.comuns import (
-    auditar_cabecalho_ministerio,
-    auditar_numeracao_artigos,
-    auditar_espacamento_paragrafo,
-    auditar_data_sem_zero_esquerda,
-    auditar_uso_siglas
-)
+import re
+# Importa os módulos de regras que criamos/separamos
+from .regras import comuns, condel, ceg, anexo
 
-from .regras.resolucao import (
-    auditar_epigrafe,
-    auditar_ementa,
-    auditar_preambulo,
-    auditar_pontuacao_incisos,
-    auditar_pontuacao_alineas,
-    auditar_fecho_vigencia,
-    auditar_assinatura
-)
-
-from .regras.anexo import (
-    auditar_anexo,
-    auditar_sequencia_capitulos_anexo,
-    auditar_sequencia_secoes_anexo,
-    auditar_sequencia_artigos_anexo,
-    auditar_pontuacao_hierarquica_anexo
-)
-
-TODAS_AS_AUDITORIAS = {
-    # --- Regras Gerais (Aplicadas na Resolução) ---
-    "Brasão / Nome do Ministério": auditar_cabecalho_ministerio,
-    "Epígrafe (Formato e Data)": auditar_epigrafe,
-    "Ementa (Verbo Inicial)": auditar_ementa,
-    "Preâmbulo (Estrutura)": auditar_preambulo,
-    "Bloco de Assinatura": auditar_assinatura,
-    "Fecho de Vigência": auditar_fecho_vigencia,
+def identificar_tipo_resolucao(texto):
+    """Lê o texto e descobre se é CONDEL ou CEG."""
+    if not texto: 
+        return "DESCONHECIDO"
+        
+    # Procura nas primeiras 1000 letras para ser rápido
+    inicio = texto[:1000].upper()
     
-    # --- Regras de Formatação
-    "Artigos (Formato Numeração)": auditar_numeracao_artigos,
-    "Parágrafos (§ Espaçamento)": auditar_espacamento_paragrafo,
-    "Datas (Zero à Esquerda no Dia)": auditar_data_sem_zero_esquerda,
-    "Siglas (Uso do travessão)": auditar_uso_siglas,
+    if "RESOLUÇÃO CEG" in inicio or "CEG/MIDR" in inicio:
+        return "CEG"
+    elif "RESOLUÇÃO CONDEL" in inicio or "CONDEL/SUDECO" in inicio:
+        return "CONDEL"
+    
+    return "DESCONHECIDO"
 
-    # --- Regras Estritas (Apenas Resolução) ---
-    "Incisos (Pontuação - Resolução)": auditar_pontuacao_incisos,
-    "Alíneas (Pontuação - Resolução)": auditar_pontuacao_alineas,
+def obter_regras(texto_completo):
+    
+    tipo = identificar_tipo_resolucao(texto_completo)
+    
+    # 1. Regras Comuns (Base) - Todo mundo tem
+    regras = {
+        "Ementa (Verbo Inicial)": comuns.auditar_ementa,
+        "Bloco de Assinatura": comuns.auditar_assinatura,
+        "Fecho de Vigência": comuns.auditar_fecho_vigencia,
+        "Artigos (Formato Numeração)": comuns.auditar_numeracao_artigos,
+        "Parágrafos (§ Espaçamento)": comuns.auditar_espacamento_paragrafo,
+        "Datas (Zero à Esquerda)": comuns.auditar_data_sem_zero_esquerda,
+        "Siglas (Uso do travessão)": comuns.auditar_uso_siglas,
+        "Anexo (Identificação)": anexo.auditar_anexo, 
+        "Anexo: Sequência de Capítulos": anexo.auditar_sequencia_capitulos_anexo,
+        "Anexo: Sequência de Seções": anexo.auditar_sequencia_secoes_anexo,
+        "Anexo: Sequência de Artigos": anexo.auditar_sequencia_artigos_anexo,
+        "Anexo: Pontuação Hierárquica": anexo.auditar_pontuacao_hierarquica_anexo,
+    }
 
-    # --- Regra de Divisão ---
-    "Anexo (Identificação)": auditar_anexo,
+    # 2. Regras Específicas (Injeção de Dependência)
+    if tipo == "CEG":
+        regras["Brasão / Cabeçalho (CEG)"] = ceg.auditar_cabecalho_ceg
+        regras["Epígrafe (CEG/MIDR)"] = ceg.auditar_epigrafe_ceg
+        regras["Preâmbulo (CEG)"] = ceg.auditar_preambulo_ceg
+        
+    else: # Padrão CONDEL (Default)
+        regras["Brasão / Ministério"] = condel.auditar_cabecalho_condel
+        regras["Epígrafe (CONDEL)"] = condel.auditar_epigrafe_condel
+        regras["Preâmbulo (CONDEL)"] = condel.auditar_preambulo_condel
+        regras["Incisos (Pontuação Estrita)"] = comuns.auditar_pontuacao_incisos 
+        regras["Alíneas (Pontuação Estrita)"] = comuns.auditar_pontuacao_alineas
 
-    # --- Regras Específicas (Apenas Anexo) ---
-    "Anexo: Sequência de Capítulos": auditar_sequencia_capitulos_anexo,
-    "Anexo: Sequência de Seções": auditar_sequencia_secoes_anexo,
-    "Anexo: Sequência de Artigos": auditar_sequencia_artigos_anexo,
-    "Anexo: Pontuação Hierárquica": auditar_pontuacao_hierarquica_anexo,
-}
+    return regras, tipo

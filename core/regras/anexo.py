@@ -26,12 +26,10 @@ def auditar_sequencia_capitulos_anexo(texto_completo):
     expected_numeral = 1
     for i, numeral_romano in enumerate(capitulos):
         current_numeral = _roman_to_int(numeral_romano)
-        
         if current_numeral != expected_numeral:
             erro = f"Sequência de Capítulos incorreta. Esperado Capítulo de valor {expected_numeral} (Romano), mas encontrado '{numeral_romano}'."
             erros.append(erro)
-            expected_numeral = current_numeral # Re-sincroniza
-        
+            expected_numeral = current_numeral 
         expected_numeral += 1
 
     if not erros:
@@ -42,31 +40,24 @@ def auditar_sequencia_capitulos_anexo(texto_completo):
 def auditar_sequencia_secoes_anexo(texto_completo):
     """(Anexo) Verifica a sequência das Seções (I, II, III...) dentro de cada Capítulo."""
     erros = []
-    # Divide o texto por Capítulos para analisar as seções de cada um
     blocos_capitulo = re.split(r'^\s*CAPÍTULO\s+[IVXLCDM]+', texto_completo, flags=re.MULTILINE)
-    
     capitulos_encontrados = re.findall(r'^\s*CAPÍTULO\s+([IVXLCDM]+)', texto_completo, re.MULTILINE)
     
-    # O primeiro bloco é o texto *antes* do CAPÍTULO I, então pulamos
     for i, bloco_texto in enumerate(blocos_capitulo[1:]):
-        # Pega o nome do capítulo atual para usar na msg de erro
         nome_capitulo = capitulos_encontrados[i] if i < len(capitulos_encontrados) else 'desconhecido'
-        
         matches = re.finditer(r'^\s*Seção\s+([IVXLCDM]+)', bloco_texto, re.MULTILINE)
         secoes = [match.group(1) for match in matches]
         
         if not secoes:
-            continue # Capítulo pode não ter seções, o que é OK
+            continue
 
         expected_numeral = 1
         for numeral_romano in secoes:
             current_numeral = _roman_to_int(numeral_romano)
-            
             if current_numeral != expected_numeral:
                 erro = f"Sequência de Seções incorreta dentro do CAPÍTULO {nome_capitulo}. Esperado Seção de valor {expected_numeral} (Romano), mas encontrado '{numeral_romano}'."
                 erros.append(erro)
-                expected_numeral = current_numeral # Re-sincroniza
-            
+                expected_numeral = current_numeral
             expected_numeral += 1
             
     if not erros:
@@ -75,7 +66,7 @@ def auditar_sequencia_secoes_anexo(texto_completo):
         return {"status": "FALHA", "detalhe": erros}
 
 def auditar_sequencia_artigos_anexo(texto_completo):
-    """(Anexo) Verifica se a sequência de Artigos (1, 2, 3...) está correta (contínua)."""
+    """(Anexo) Verifica se a sequência de Artigos está correta."""
     erros = []
     matches = re.finditer(r'Art\.\s*(\d+)', texto_completo)
     artigos = [int(match.group(1)) for match in matches]
@@ -83,7 +74,6 @@ def auditar_sequencia_artigos_anexo(texto_completo):
     if not artigos:
         return {"status": "OK", "detalhe": "Nenhum Artigo encontrado no Anexo para análise de sequência."}
 
-    # No Anexo do exemplo, a contagem é contínua e começa em 1.
     expected_num = 1
     if artigos[0] != 1:
         erros.append(f"O primeiro Artigo do Anexo não é 'Art. 1º'. Encontrado: 'Art. {artigos[0]}'.")
@@ -92,7 +82,7 @@ def auditar_sequencia_artigos_anexo(texto_completo):
     for num in artigos:
         if num != expected_num:
             erros.append(f"Sequência de Artigos incorreta no Anexo. Esperado 'Art. {expected_num}', mas encontrado 'Art. {num}'.")
-            expected_num = num # Re-sincroniza
+            expected_num = num
         expected_num += 1
 
     if not erros:
@@ -102,8 +92,7 @@ def auditar_sequencia_artigos_anexo(texto_completo):
 
 def auditar_pontuacao_hierarquica_anexo(texto_completo):
     """
-    (NOVA REGRA - Anexo) Verifica a pontuação hierárquica (Regras A, B, C)
-    de Artigos, Parágrafos, Incisos e Alíneas.
+    (NOVA REGRA - Anexo) Verifica a pontuação hierárquica.
     """
     erros = []
     
@@ -118,11 +107,9 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
         linha_completa = match.group(0).strip()
         marcador_item = match.group(1).strip()
         
-        # Ignora linhas de CAPÍTULO ou Seção (que podem ser pegas por 'I -')
         if re.match(r'^CAPÍTULO', linha_completa, re.I) or re.match(r'^Seção', linha_completa, re.I):
             continue
             
-        # Determina o tipo do item atual
         tipo_atual = None
         if re.match(r'Art\.|Parágrafo|§', marcador_item, re.I):
             tipo_atual = "Artigo/Paragrafo"
@@ -131,41 +118,30 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
         elif re.match(r'^[a-z]\)', marcador_item):
             tipo_atual = "Alinea"
 
-        # Pega o próximo item, se existir
         proximo_match = matches[i + 1] if (i + 1) < len(matches) else None
         
-        # --- REGRA 1: ABERTURA (Dois-Pontos ':') ---
         inicia_subdivisao = False
         if proximo_match:
             marcador_proximo = proximo_match.group(1).strip()
-            
-            # Verifica se o próximo item é um Inciso
             proximo_eh_inciso = bool(re.match(r'^[IVXLCDM]+', marcador_proximo))
-            # Verifica se o próximo item é uma Alínea
             proximo_eh_alinea = bool(re.match(r'^[a-z]\)', marcador_proximo))
 
             if tipo_atual == "Artigo/Paragrafo" and proximo_eh_inciso:
-                inicia_subdivisao = True # Art/§ seguido por Inciso
+                inicia_subdivisao = True
             elif tipo_atual == "Inciso" and proximo_eh_alinea:
-                inicia_subdivisao = True # Inciso seguido por Alínea
+                inicia_subdivisao = True
         
         if inicia_subdivisao:
             if not linha_completa.endswith(':'):
                 erros.append(f"Pontuação de Abertura Incorreta: '{linha_completa}' deve terminar com ':' pois é seguido por uma subdivisão.")
-            continue # Regra 1 verificada, pular para o próximo item
+            continue
             
-        # --- REGRAS 2 (Declaração) e 3 (Lista) ---
-        
-        # Itens do tipo Artigo/Parágrafo (Regra C: Declaração)
         if tipo_atual == "Artigo/Paragrafo":
             if not linha_completa.endswith('.'):
                 erros.append(f"Pontuação de Declaração Incorreta: '{linha_completa}' deve terminar com '.'.")
             continue
             
-        # Itens do tipo Inciso ou Alínea (Regra B: Lista)
         if tipo_atual in ("Inciso", "Alinea"):
-            
-            # Pega o tipo do próximo item
             tipo_proximo = None
             if proximo_match:
                 marcador_proximo = proximo_match.group(1).strip()
@@ -176,19 +152,11 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
                 elif re.match(r'^[a-z]\)', marcador_proximo):
                     tipo_proximo = "Alinea"
             
-            # Se o próximo item é do *mesmo* tipo (ex: Inciso I -> Inciso II)
-            # OU se é uma Alínea seguida por um Inciso (ex: b) -> VIII -)
             if (proximo_match and tipo_proximo == tipo_atual) or \
                (tipo_atual == "Alinea" and tipo_proximo == "Inciso"):
-                
-                # É um item intermediário OU penúltimo.
-                # Deve terminar com ';', '; e', ou '; ou'.
                 if not (linha_completa.endswith(';') or linha_completa.endswith('; e') or linha_completa.endswith('; ou')):
                     erros.append(f"Pontuação de Lista Incorreta: '{linha_completa}' deve terminar com ';', '; e', ou '; ou'.")
-
-            # Se é o último item da lista (não há próximo item, ou o próximo é de tipo MAIOR, como Artigo/Parágrafo)
             else:
-                # É o item final da lista. Deve terminar com '.'
                 if not linha_completa.endswith('.'):
                     erros.append(f"Pontuação de Fim de Lista Incorreta: '{linha_completa}' deveria terminar com '.' (ponto final), pois é o último item do seu bloco.")
 

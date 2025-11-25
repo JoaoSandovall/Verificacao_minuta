@@ -447,7 +447,7 @@ XII - com o projeto cuja execução regular não tenha sido comprovada;
 
 XIII - com obras e serviços de construção civil que não tenham projeto executivo à disposição da fiscalização do agente operador e impeçam a identificação da qualidade, da quantidade e do custo dos serviços executados; e
 
-XIV - com bens e serviços de qualidade inferior àquela aprovada para o projeto;
+XIV - com bens e serviços de qualidade inferior àquela aprovada para o projeto.
 
 § 4°  Comprovada a constatação de irregularidade, por empresa independente de auditoria externa, pela Auditoria-Geral da SUDECO, pela fiscalização do agente operador, pelos demais órgãos de fiscalização e controle, em relatório circunstanciado, que deverá conter a descrição dos fatos e a prova documental das irregularidades apontadas, a partir da notificação ao agente operador, ficará suspensa automaticamente a liberação de recursos do FDCO, enquanto não acolhida pelo órgão de controle a justificativa apresentada pela empresa titular do projeto, ou sanada a irregularidade.
 
@@ -535,7 +535,7 @@ II - a nova participação societária venha a garantir os recursos anteriorment
 
 a) tenha sofrido processo de concordata, falência ou liquidação; e
 
-b) deixe de apresentar capacidade compatível com os compromissos assumidos por ocasião da aprovação do projeto;
+b) deixe de apresentar capacidade compatível com os compromissos assumidos por ocasião da aprovação do projeto.
 
 § 3°  Nas hipóteses de fusão, incorporação ou cisão de pessoa jurídica titular de participação acionária, o direito à utilização do crédito poderá ser automaticamente transferido à pessoa jurídica sucessora, a critério da SUDECO e desde que haja parecer favorável do agente operador.
 
@@ -609,7 +609,7 @@ II - transferência de ações;
 
 III - incorporação, fusão e cisão da empresa titular do projeto;
 
-IV - alteração do capital social da empresa, atendendo ao limite mínimo previsto no inciso XIII do art. 23;
+IV - alteração do capital social da empresa, atendendo ao limite mínimo previsto no inciso XIII do art. 23.
 
 Parágrafo único.  Poderá ser submetida unicamente à autorização do agente operador a alteração das garantias e salvaguardas contratuais.
 
