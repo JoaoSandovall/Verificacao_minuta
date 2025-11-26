@@ -41,8 +41,8 @@ def auditar_preambulo_condel(texto_completo):
     if "O PRESIDENTE DO CONSELHO DELIBERATIVO" not in texto_completo:
          erros.append("Autoridade incorreta. Esperado: 'O PRESIDENTE DO CONSELHO DELIBERATIVO...'.")
     
-    if "o Colegiado resolveu:" not in texto_completo:
-        erros.append("Fecho incorreto. Esperado: 'o Colegiado resolveu:'.")
+    if "resolveu:" not in texto_completo:
+        erros.append("Fecho incorreto. Esperado: 'resolveu:'.")
 
     if erros:
         return {"status": "FALHA", "detalhe": erros}

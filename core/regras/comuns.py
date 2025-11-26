@@ -12,7 +12,6 @@ def auditar_numeracao_artigos(texto_completo):
         numero_artigo_str = match.group(1)
         numero_artigo = int(numero_artigo_str)
         pos_fim_match = match.end()
-        # Pega um trecho maior para contexto
         match_texto_completo = match.string[match.start():match.end()+20].split('\n')[0]
         trecho_apos_artigo = texto_completo[pos_fim_match : pos_fim_match + 3]
 
@@ -138,12 +137,16 @@ def auditar_fecho_vigencia(texto_completo):
          return {"status": "FALHA", "detalhe": ["Cláusula de vigência não encontrada."]}
     return {"status": "OK", "detalhe": "Vigência encontrada."}
 
-# --- REGRAS DE PONTUAÇÃO ESTRITA (CORRIGIDAS - DECRETO 12.002) ---
+# --- REGRAS DE PONTUAÇÃO ESTRITA (CORRIGIDAS) ---
 
 def auditar_pontuacao_incisos(texto_completo):
+    """
+    (REGRA ESTRITA) Verifica a sequência e pontuação de Incisos.
+    CORRIGIDO: Detecta se o inciso é o último com base no PRÓXIMO elemento.
+    """
     erros = []
     
-    # Regex blindada: exige traço/travessão e para antes de estruturas
+    # Regex: Exige traço e para antes de estruturas
     padrao_inciso = re.compile(
         r'(^[ \t]*[IVXLCDM]+\s*[\-–].*?)(?=\n\s*(?:[IVXLCDM]+\s*[\-–]|Art\.|§|CAPÍTULO|Seção|Parágrafo|ANEXO)|$)', 
         re.MULTILINE | re.DOTALL
@@ -179,31 +182,35 @@ def auditar_pontuacao_incisos(texto_completo):
         # 2. Pontuação
         is_last_in_list = False
         
-        if i == len(matches) - 1:
+        # Verifica o que vem DEPOIS deste inciso no texto bruto
+        pos_fim = match.end()
+        
+        # Olha os próximos 200 caracteres (ou até o fim) para ver o que começa
+        proximo_trecho = texto_completo[pos_fim:pos_fim+200].lstrip()
+        
+        # Se o próximo trecho começa com outro Inciso (Romano + traço) -> NÃO É FIM
+        if re.match(r'[IVXLCDM]+\s*[\-–]', proximo_trecho):
+            is_last_in_list = False
+        # Se começa com estrutura de fechamento (Art, §, Cap) -> É FIM
+        elif re.match(r'(Art\.|§|CAPÍTULO|Seção|Parágrafo|ANEXO)', proximo_trecho):
+            is_last_in_list = True
+        # Se acabou o texto -> É FIM
+        elif not proximo_trecho:
             is_last_in_list = True
         else:
-            prox_match = matches[i+1]
-            prox_texto = prox_match.group(1)
-            prox_romano = re.match(r'^\s*([IVXLCDM]+)', prox_texto).group(1)
-            
-            if _roman_to_int(prox_romano) == 1:
-                is_last_in_list = True
-            
-            gap = texto_completo[match.end():prox_match.start()]
-            if re.search(r'(Art\.|§|CAPÍTULO|Seção|Parágrafo)', gap):
-                is_last_in_list = True
+            # Caso padrão: Se não tem outro inciso colado, assume fim
+            is_last_in_list = True
 
-        tem_alinea_depois = re.search(r':\s*\n\s*a\)', match.group(0) + texto_completo[match.end():match.end()+20])
-        
-        if tem_alinea_depois or inciso_texto.endswith(':'):
-            if not inciso_texto.endswith(':'):
-                erros.append(f"O Inciso {numeral_romano} precede alíneas e deve terminar com dois-pontos (:). Trecho: '{trecho_limpo}'")
-            continue 
+        # Exceção: Se termina com dois-pontos, introduz alíneas (não termina com ponto)
+        if inciso_texto.endswith(':'):
+            continue
 
+        # Aplica regra
         if is_last_in_list:
             if not inciso_texto.endswith('.'):
-                erros.append(f"O último inciso da lista ({numeral_romano}) deve terminar com ponto final (.). Trecho: '{trecho_limpo}'")
+                erros.append(f"O último inciso do bloco ({numeral_romano}) deve terminar com ponto final (.). Trecho: '{trecho_limpo}'")
         else:
+            # Intermediário
             if not (inciso_texto.endswith(';') or inciso_texto.endswith('; e') or inciso_texto.endswith('; ou')):
                 erros.append(f"O inciso intermediário ({numeral_romano}) deve terminar com ponto e vírgula (;). Trecho: '{trecho_limpo}'")
 
@@ -214,7 +221,7 @@ def auditar_pontuacao_incisos(texto_completo):
 def auditar_pontuacao_alineas(texto_completo):
     """
     (REGRA ESTRITA) Verifica Alíneas (a, b, c...).
-    ATUALIZADO: Se alínea precede INCISO, deve terminar com PONTO E VÍRGULA (;), não ponto final.
+    CORRIGIDO: Se depois da alínea vem um Inciso, ela deve ser ponto e vírgula (;).
     """
     erros = []
     
@@ -233,61 +240,45 @@ def auditar_pontuacao_alineas(texto_completo):
         trecho_visual = re.sub(r'\s+', ' ', texto)[:60] + "..."
         current_ord = ord(letra)
         
-        # 1. Sequência (reseta se achar 'a')
+        # 1. Sequência
         if letra == 'a':
             pass
         elif i > 0:
-            prev_texto = matches[i-1].group(1).strip()
+            prev_match = matches[i-1]
+            prev_texto = prev_match.group(1).strip()
             prev_letra = prev_texto[0]
-            gap = texto_completo[matches[i-1].end():match.start()]
+            gap = texto_completo[prev_match.end():match.start()]
+            
             tem_quebra = re.search(r'(Art\.|§|[IVXLCDM])', gap)
             if not tem_quebra and current_ord != ord(prev_letra) + 1:
                  erros.append(f"Sequência de alíneas incorreta. Esperado '{chr(ord(prev_letra)+1)})', mas encontrado '{letra})'. Trecho: '{trecho_visual}'")
 
         # 2. Pontuação
-        is_final_structure = False # Se fecha o Artigo/Bloco
-        precedes_inciso = False    # Se apenas volta para o nível do Inciso
+        # Olha para o futuro (Gap) para decidir
+        pos_fim = match.end()
+        proximo_trecho = texto_completo[pos_fim:pos_fim+200].lstrip()
         
-        if i == len(matches) - 1:
-            # Se é a última alínea do texto todo, assume fim.
+        is_final_structure = False # Fecha tudo (.)
+        continues_parent = False   # Volta pro inciso (;)
+        continues_alinea = False   # Vai pra próxima alínea (;)
+
+        if re.match(r'[a-z]\)', proximo_trecho):
+            continues_alinea = True
+        elif re.match(r'[IVXLCDM]+\s*[\-–]', proximo_trecho):
+            continues_parent = True
+        elif re.match(r'(Art\.|§|CAPÍTULO|Seção|ANEXO)', proximo_trecho) or not proximo_trecho:
             is_final_structure = True
         else:
-            # Olha o GAP até o próximo item (alínea ou outra coisa)
-            gap = texto_completo[match.end():matches[i+1].start()]
-            
-            # Se achou Artigo, Parágrafo ou Capítulo -> É FIM.
-            if re.search(r'(Art\.|§|CAPÍTULO|Seção)', gap):
-                is_final_structure = True
-            
-            # Se achou Inciso (ex: III -) -> NÃO É FIM, É CONTINUAÇÃO DA LISTA PAI.
-            # Nesse caso, a alínea (que fecha o inciso anterior) deve seguir a pontuação do inciso pai (;)
-            elif re.search(r'[IVXLCDM]+\s*[\-–]', gap):
-                precedes_inciso = True
-                
-            # Se o próximo item é 'a)', então este é o fim da lista atual de alíneas
-            # Mas precisamos saber se o que vem depois desse 'a)' é fim ou inciso... 
-            # Simplificação: Se reiniciou em 'a)', assumimos que o bloco anterior fechou.
-            # Mas se fechou para virar inciso, é ;, se fechou para virar Art, é .
-            # Como o gap check já cobre isso, ok.
-            
-            prox_letra = matches[i+1].group(1).strip()[0]
-            if prox_letra == 'a' and not precedes_inciso and not is_final_structure:
-                # Caso raro: a) ... b) [FIM] a) ... (duas listas de alíneas seguidas sem nada no meio?)
-                # Assume ponto final por segurança.
-                is_final_structure = True
+            # Se não reconheceu nada estrutural, assume fim
+            is_final_structure = True
 
-        # Aplicação da Regra
+        # Aplica Regra
         if is_final_structure:
             if not texto.endswith('.'):
                 erros.append(f"A última alínea ('{letra})') deve terminar com ponto final (.). Trecho: '{trecho_visual}'")
         
-        elif precedes_inciso:
-            # Aqui estava o erro! Antes exigia ponto. Agora exige ponto e vírgula.
-            if not (texto.endswith(';') or texto.endswith('; e') or texto.endswith('; ou')):
-                 erros.append(f"A alínea que antecede outro inciso ('{letra})') deve terminar com ponto e vírgula (;). Trecho: '{trecho_visual}'")
-        
-        else:
-            # Intermediária normal (a -> b)
+        elif continues_parent or continues_alinea:
+            # Se continua como alínea ou volta pra inciso, é ponto e vírgula
             if not (texto.endswith(';') or texto.endswith('; e') or texto.endswith('; ou')):
                  erros.append(f"A alínea intermediária ('{letra})') deve terminar com ponto e vírgula (;). Trecho: '{trecho_visual}'")
 

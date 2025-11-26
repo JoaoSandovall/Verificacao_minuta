@@ -21,7 +21,7 @@ def auditar_epigrafe_ceg(texto_completo):
     Rejeita: CEG-MIDR, CEG MIDR.
     """
     # Procura erros comuns primeiro
-    if re.search(r"RESOLUÇÃO\s+CEG[- ]MIDR", texto_completo):
+    if re.search(r"RESOLUÇÃO\s+CEG[- ]MIDR N°", texto_completo):
         return {"status": "FALHA", "detalhe": ["A epígrafe deve usar barra '/' (CEG/MIDR). Hífen ou espaço não são permitidos."]}
 
     padrao = re.compile(r"RESOLUÇÃO\s+CEG/MIDR\s+Nº\s+(\d+|xx),\s+DE", re.IGNORECASE)
@@ -54,11 +54,11 @@ def auditar_preambulo_ceg(texto_completo):
             erros.append("Sigla da autoridade 'CEG/MIDR' não encontrada no preâmbulo.")
 
     # 2. Verifica Fecho (Flexível)
-    tem_fecho_minusculo = "o Colegiado resolveu:" in texto_completo
+    tem_fecho_minusculo = " RESOLVE:" in texto_completo
     tem_fecho_maiusculo = re.search(r"\n\s*RESOLVEU:\s*\n", texto_completo) # RESOLVEU: sozinho na linha
     
     if not (tem_fecho_minusculo or tem_fecho_maiusculo):
-        erros.append("Fecho do preâmbulo não encontrado. Aceito: 'o Colegiado resolveu:' ou 'RESOLVEU:'.")
+        erros.append("Fecho do preâmbulo não encontrado. Aceito: 'RESOLVE: '.")
 
     if erros:
         return {"status": "FALHA", "detalhe": erros}
