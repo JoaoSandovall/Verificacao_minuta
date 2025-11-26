@@ -3,8 +3,13 @@ import docx
 import PyPDF2
 from io import BytesIO
 import re
+
+# Importa a nova função "inteligente"
 from core import obter_regras
+# Importa a regra de anexo separada para verificação inicial
 from core.regras.anexo import auditar_anexo
+# Importa as regras comuns para forçar o uso no Anexo
+from core.regras import comuns
 
 def extrair_texto(arquivo_enviado):
     """Extrai texto de diferentes tipos de arquivo."""
@@ -27,10 +32,7 @@ def extrair_texto(arquivo_enviado):
         return None
 
 def executar_auditoria(texto_para_auditar, regras_dict):
-    """
-    Executa um conjunto de regras (dicionário {nome: funcao}) em um bloco de texto.
-    Refatorado para aceitar o dicionário direto do obter_regras.
-    """
+    """Executa um dicionário de regras em um bloco de texto."""
     resultados_ok = []
     resultados_falha = []
     
@@ -38,7 +40,7 @@ def executar_auditoria(texto_para_auditar, regras_dict):
         return [], []
 
     for nome_regra, funcao_auditoria in regras_dict.items():
-        # A regra 'Anexo (Identificação)' é tratada separadamente, então pulamos aqui se ela vier no pacote
+        # Pula a regra de identificação do anexo (já feita separadamente)
         if nome_regra == "Anexo (Identificação)":
             continue
 
@@ -59,7 +61,7 @@ def executar_auditoria(texto_para_auditar, regras_dict):
     return resultados_ok, resultados_falha
 
 def exibir_resultados(titulo, resultados_ok, resultados_falha):
-    """Cria as duas colunas e exibe os resultados de uma auditoria."""
+    """Exibe os resultados na interface."""
     st.subheader(titulo)
     col_erros, col_corretos = st.columns(2)
     with col_erros:
@@ -91,40 +93,46 @@ def limpar_caixa_texto():
     if "texto_colado_input" in st.session_state:
         st.session_state.texto_colado_input = ""
 
-# --- Interface Gráfica (Front-end) ---
+# --- Interface Gráfica ---
 st.set_page_config(page_title="Auditor de Minutas", layout="wide")
-
 st.title("🔎 Auditor de Minutas de Resolução")
 
 tab_texto, tab_arquivo = st.tabs(["Colar Texto", "Anexar Arquivo"])
 
-# --- Função Auxiliar para Análise ---
+# --- Lógica Central de Análise ---
 def analisar_e_exibir(texto_completo):
-    """Função centralizada para analisar e exibir os resultados."""
     if not texto_completo or not texto_completo.strip():
         st.warning("Texto fornecido está vazio ou contém apenas espaços.")
         return
 
-    # Limpa marca d'água ANTES de qualquer análise
+    # Limpa marca d'água
     texto_limpo = re.sub(r'\*?\s*MINUTA DE DOCUMENTO', '', texto_completo, flags=re.IGNORECASE)
     if not texto_limpo or not texto_limpo.strip():
         st.warning("Texto após remover 'MINUTA DE DOCUMENTO' está vazio.")
         return
 
-    # 1. Obtém as regras dinamicamente (Aqui está a mágica da separação CEG/CONDEL)
+    # 1. Obtém regras dinâmicas (CEG vs CONDEL)
     regras_detectadas, tipo_doc = obter_regras(texto_limpo)
-    
     st.info(f"🔍 Tipo de Documento Detectado: **Resolução {tipo_doc}**")
 
-    # 2. Divide as regras em "Resolução" e "Anexo" baseada no nome da regra
-    # (Tudo que começa com "Anexo" vai para o fim, o resto fica no corpo)
+    # 2. Separação Inicial de Regras
     regras_resolucao = {k: v for k, v in regras_detectadas.items() if not k.startswith("Anexo")}
+    
+    # Pega as regras estruturais do Anexo (Capítulos, Seções, Hierarquia)
     regras_anexo = {k: v for k, v in regras_detectadas.items() if k.startswith("Anexo") and k != "Anexo (Identificação)"}
 
-    # 3. Executa a regra de Identificação do Anexo (geral)
+    # 3. INCLUSÃO DAS REGRAS COMUNS NO ANEXO (Solicitado)
+    # Adicionamos manualmente as regras de formatação que também valem para o anexo
+    regras_anexo["Artigos (Formato Numeração)"] = comuns.auditar_numeracao_artigos
+    regras_anexo["Parágrafos (§ Espaçamento)"] = comuns.auditar_espacamento_paragrafo
+    regras_anexo["Siglas (Uso do travessão)"] = comuns.auditar_uso_siglas
+    regras_anexo["Incisos (Pontuação Estrita)"] = comuns.auditar_pontuacao_incisos
+    regras_anexo["Alíneas (Pontuação Estrita)"] = comuns.auditar_pontuacao_alineas
+
+    # 4. Identificação do Anexo
     resultado_identificacao_anexo = auditar_anexo(texto_limpo)
 
-    # 4. Divide o texto (Resolução vs Anexo)
+    # 5. Divisão do Texto
     texto_resolucao = texto_limpo
     texto_anexo = None
     match_anexo = re.search(r'^\s*ANEXO\s*$', texto_limpo, re.MULTILINE)
@@ -134,27 +142,23 @@ def analisar_e_exibir(texto_completo):
         texto_resolucao = texto_limpo[:split_point].strip()
         texto_anexo = texto_limpo[match_anexo.end():].strip()
 
-    # 5. Executa auditoria da Resolução (Usando as regras dinâmicas filtradas)
+    # 6. Auditoria da Resolução
     ok_res, falha_res = executar_auditoria(texto_resolucao, regras_resolucao)
 
-    # 6. Adiciona o resultado da Identificação do Anexo na lista da Resolução
+    # Adiciona resultado da identificação do Anexo
     detalhes_anexo_id = resultado_identificacao_anexo.get("detalhe", [])
-    if not isinstance(detalhes_anexo_id, list):
-        detalhes_anexo_id = [str(detalhes_anexo_id)]
-    else:
-        detalhes_anexo_id = [str(d) for d in detalhes_anexo_id]
+    if not isinstance(detalhes_anexo_id, list): detalhes_anexo_id = [str(detalhes_anexo_id)]
+    else: detalhes_anexo_id = [str(d) for d in detalhes_anexo_id]
 
     if resultado_identificacao_anexo["status"] == "FALHA":
         falha_res.append(("Anexo (Identificação)", detalhes_anexo_id))
     else:
-        detalhe_ok = resultado_identificacao_anexo.get("detalhe", "")
-        ok_res.append(("Anexo (Identificação)", str(detalhe_ok)))
+        ok_res.append(("Anexo (Identificação)", str(resultado_identificacao_anexo.get("detalhe", ""))))
 
-    # 7. Exibe resultados da Resolução
     st.divider()
     exibir_resultados(f"Resultado da Resolução Principal ({tipo_doc})", ok_res, falha_res)
 
-    # 8. Exibe resultados do Anexo (se existir E contiver texto)
+    # 7. Auditoria do Anexo (Agora com as regras extras)
     if texto_anexo and texto_anexo.strip():
         st.divider()
         ok_anexo, falha_anexo = executar_auditoria(texto_anexo, regras_anexo)
@@ -163,32 +167,21 @@ def analisar_e_exibir(texto_completo):
         st.divider()
         st.info("Seção 'ANEXO' encontrada, mas está vazia.")
 
-# --- ABA 1: COLAR TEXTO ---
+# --- Interface ---
 with tab_texto:
     st.write("Copie e cole o texto completo da minuta na caixa abaixo para análise.")
     texto_colado = st.text_area("Texto da Minuta:", height=350, label_visibility="collapsed", key="texto_colado_input")
+    col1, col2 = st.columns([4, 1])
+    if col1.button("Analisar Texto", type="primary", use_container_width=True):
+        if texto_colado: 
+            with st.spinner("Analisando..."): analisar_e_exibir(texto_colado)
+        else: st.warning("Cole um texto primeiro.")
+    if col2.button("Limpar", use_container_width=True, on_click=limpar_caixa_texto): pass
 
-    col_analisar, col_limpar = st.columns([4, 1])
-    with col_analisar:
-        botao_analisar_clicado = st.button("Analisar Texto", type="primary", use_container_width=True, key="btn_analisar_texto")
-    with col_limpar:
-        st.button("Limpar", use_container_width=True, key="btn_limpar_texto", on_click=limpar_caixa_texto)
-
-    if botao_analisar_clicado:
-        if not texto_colado:
-            st.warning("Por favor, cole um texto na caixa acima para fazer a análise.")
-        else:
-            with st.spinner("Realizando auditoria do texto..."):
-                analisar_e_exibir(texto_colado)
-
-# --- ABA 2: UPLOAD DE ARQUIVO ---
 with tab_arquivo:
-    st.write("Envie um arquivo (.txt, .docx ou .pdf) para análise de conformidade.")
-    arquivo_anexado = st.file_uploader("Anexe a minuta aqui:", type=['txt', 'docx', 'pdf'], label_visibility="collapsed")
-
-    if arquivo_anexado:
-        if st.button("Analisar Arquivo", type="primary", use_container_width=True, key="btn_analisar_arquivo"):
-            with st.spinner("Realizando auditoria do arquivo..."):
-                texto_completo = extrair_texto(arquivo_anexado)
-                if texto_completo:
-                    analisar_e_exibir(texto_completo)
+    st.write("Envie um arquivo (.txt, .docx ou .pdf).")
+    arq = st.file_uploader("Anexe aqui:", type=['txt', 'docx', 'pdf'], label_visibility="collapsed")
+    if arq and st.button("Analisar Arquivo", type="primary", use_container_width=True):
+        with st.spinner("Analisando..."):
+            txt = extrair_texto(arq)
+            if txt: analisar_e_exibir(txt)
