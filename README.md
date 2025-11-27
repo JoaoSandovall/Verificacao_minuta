@@ -33,7 +33,6 @@ O sistema aplica validações divididas em escopos:
 
 ## Estrutura do Projeto
 
-```text
 /
 ├── app.py                  # Interface frontend (Streamlit) e lógica de visualização
 ├── core/
