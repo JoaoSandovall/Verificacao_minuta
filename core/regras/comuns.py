@@ -1,6 +1,16 @@
 import re
 from core.utils import _roman_to_int
 
+def _obter_contexto(texto, match):
+    """Retorna a linha inteira do match para exibir no erro."""
+    inicio = match.start()
+    fim = texto.find('\n', inicio)
+    if fim == -1:
+        fim = len(texto)
+    
+    trecho = texto[inicio:fim].strip()
+    return trecho[:60] + "..." if len(trecho) > 60 else trecho
+
 # --- REGRAS DE ESTRUTURA GERAL ---
 
 def auditar_numeracao_artigos(texto_completo):
@@ -12,27 +22,30 @@ def auditar_numeracao_artigos(texto_completo):
         numero_artigo_str = match.group(1)
         numero_artigo = int(numero_artigo_str)
         pos_fim_match = match.end()
-        match_texto_completo = match.string[match.start():match.end()+20].split('\n')[0]
+        
+        # Obtém o contexto usando a função auxiliar segura
+        contexto = _obter_contexto(texto_completo, match)
+        
         trecho_apos_artigo = texto_completo[pos_fim_match : pos_fim_match + 3]
 
-        # REGRA NOVA: Usa 'ᵒ'
         if 1 <= numero_artigo <= 9:
             padrao_esperado = "ᵒ  " 
             if not trecho_apos_artigo.startswith(padrao_esperado):
                 if trecho_apos_artigo.startswith('º') or trecho_apos_artigo.startswith('°'):
-                    erros.append(f"No 'Art. {numero_artigo}', o símbolo ordinal está incorreto. Use 'ᵒ' (o caractere específico). Trecho: '{match_texto_completo}...'")
-                else:
-                    erros.append(f"O 'Art. {numero_artigo}' deve ser seguido pelo ordinal 'ᵒ' e dois espaços. Trecho: '{match_texto_completo}...'")
-        
+                    erros.append(f"No 'Art. {numero_artigo}', o símbolo ordinal está incorreto. Use 'ᵒ'. Trecho: '{contexto}'")
+                elif not trecho_apos_artigo.startswith('ᵒ'):
+                    erros.append(f"O 'Art. {numero_artigo}' deve ser seguido pelo ordinal 'ᵒ'. Trecho: '{contexto}'")
+                elif not trecho_apos_artigo.startswith('ᵒ  '):
+                    erros.append(f"Após 'Art. {numero_artigo}ᵒ', deve haver dois espaços. Trecho: '{contexto}'")
         elif numero_artigo >= 10:
             padrao_esperado = ".  "
             if not trecho_apos_artigo.startswith(padrao_esperado):
                 if trecho_apos_artigo.startswith('°') or trecho_apos_artigo.startswith('º') or trecho_apos_artigo.startswith('ᵒ'):
-                    erros.append(f"O 'Art. {numero_artigo}' deve usar ponto final (.), não ordinal. Trecho: '{match_texto_completo}...'")
+                    erros.append(f"O 'Art. {numero_artigo}' deve usar ponto final (.), não ordinal. Trecho: '{contexto}'")
                 elif not trecho_apos_artigo.startswith('.'):
-                    erros.append(f"O 'Art. {numero_artigo}' deve ser seguido por ponto (.). Trecho: '{match_texto_completo}...'")
+                    erros.append(f"O 'Art. {numero_artigo}' deve ser seguido por ponto (.). Trecho: '{contexto}'")
                 elif not trecho_apos_artigo.startswith('.  '):
-                     erros.append(f"Após 'Art. {numero_artigo}.', deve haver dois espaços. Trecho: '{match_texto_completo}...'")
+                     erros.append(f"Após 'Art. {numero_artigo}.', deve haver dois espaços. Trecho: '{contexto}'")
 
     if not erros:
         return {"status": "OK", "detalhe": "A numeração e espaçamento dos artigos estão corretos."}
@@ -48,31 +61,35 @@ def auditar_espacamento_paragrafo(texto_completo):
         numero_paragrafo_str = match.group(1)
         numero_paragrafo = int(numero_paragrafo_str)
         pos_fim_match = match.end()
+        
+        # Obtém o contexto usando a função auxiliar segura
+        contexto = _obter_contexto(texto_completo, match)
+        
         trecho_apos_numero = texto_completo[pos_fim_match : pos_fim_match + 3]
-        match_texto = match.group(0)
 
-        # REGRA NOVA: Usa 'ᵒ'
         if 1 <= numero_paragrafo <= 9:
             if not trecho_apos_numero.startswith("ᵒ  "):
-                erros.append(f"O '§ {numero_paragrafo}' deve ter 'ᵒ' e dois espaços. Trecho: '{match_texto}...'")
+                erros.append(f"O '§ {numero_paragrafo}' deve ter 'ᵒ' e dois espaços. Trecho: '{contexto}'")
 
         elif numero_paragrafo >= 10:
             if trecho_apos_numero.startswith('°') or trecho_apos_numero.startswith('º') or trecho_apos_numero.startswith('ᵒ'):
-                 erros.append(f"O '§ {numero_paragrafo}' não deve usar ordinal. Trecho: '{match_texto}...'")
+                 erros.append(f"O '§ {numero_paragrafo}' não deve usar ordinal. Trecho: '{contexto}'")
             elif trecho_apos_numero.startswith('.'):
                 if not trecho_apos_numero.startswith('.  '):
-                    erros.append(f"Após '§ {numero_paragrafo}.', deve haver dois espaços. Trecho: '{match_texto}...'")
+                    erros.append(f"Após '§ {numero_paragrafo}.', deve haver dois espaços. Trecho: '{contexto}'")
             elif trecho_apos_numero.startswith(' '):
                 if not trecho_apos_numero.startswith('  '):
-                     erros.append(f"Após '§ {numero_paragrafo}' (sem ponto), deve haver dois espaços. Trecho: '{match_texto}...'")
+                     erros.append(f"Após '§ {numero_paragrafo}' (sem ponto), deve haver dois espaços. Trecho: '{contexto}'")
             else:
-                erros.append(f"Formatação inválida após '§ {numero_paragrafo}'. Trecho: '{match_texto}...'")
+                erros.append(f"Formatação inválida após '§ {numero_paragrafo}'. Trecho: '{contexto}'")
 
     matches_unicos = re.finditer(r'^\s*Parágrafo\s+único\.', texto_completo, re.MULTILINE)
     for match in matches_unicos:
         pos_fim_match = match.end()
+        contexto = _obter_contexto(texto_completo, match)
+        
         if not texto_completo[pos_fim_match : pos_fim_match + 2] == "  ":
-            erros.append(f"Após 'Parágrafo único.', deve haver dois espaços. Trecho: '{match.group(0)}...'")
+            erros.append(f"Após 'Parágrafo único.', deve haver dois espaços. Trecho: '{contexto}'")
 
     if not erros:
         return {"status": "OK", "detalhe": "O espaçamento dos parágrafos está correto."}
@@ -134,33 +151,22 @@ def auditar_assinatura(texto_completo):
     return {"status": "OK", "detalhe": "Assinatura correta."}
 
 def auditar_fecho_vigencia(texto_completo):
-    """Verifica cláusula de vigência. Aceita data com 'ᵒ'."""
+    """Verifica cláusula de vigência. Aceita 'ᵒ'."""
     if "Esta Resolução entra em vigor" not in texto_completo:
          return {"status": "FALHA", "detalhe": ["Cláusula de vigência não encontrada."]}
     
-    # Valida formato de data específico na vigência, se houver
-    padrao_data_especifica = re.compile(
-        r"(Esta\s+Resolução\s+entra\s+em\s+vigor\s+em\s+"
-        r"(\d{1,2})[ᵒ]\s+de\s+" # Agora exige 'ᵒ' se for usado ordinal
-        r"([a-záçãõéêíóôú]+)\s+de\s+"
-        r"(\d{4})\.)"
-    )
-    match_data = padrao_data_especifica.search(texto_completo)
-    
-    # Se achou data com ordinal, verifica se o caractere é o correto (a regex já filtrou pelo correto)
-    # Se tiver usando 'º' ou '°', não vai dar match na regex acima e pode cair no erro genérico ou passar batido
-    # Vamos fazer uma busca "suja" para avisar o usuário
+    # Valida ordinal na vigência
     busca_errada = re.search(r"entra\s+em\s+vigor\s+em\s+\d{1,2}[º°]\s+de", texto_completo)
     if busca_errada:
         return {"status": "FALHA", "detalhe": [f"Data de vigência usando ordinal incorreto. Use 'ᵒ'. Trecho: '{busca_errada.group(0)}'"]}
 
     return {"status": "OK", "detalhe": "Vigência encontrada."}
 
-# --- REGRAS DE PONTUAÇÃO ESTRITA (CORRIGIDAS - DECRETO 12.002) ---
-
 def auditar_pontuacao_incisos(texto_completo):
+
     erros = []
     
+    # Regex: Exige traço (incluindo travessão —) e para antes de estruturas
     padrao_inciso = re.compile(
         r'(^[ \t]*[IVXLCDM]+\s*[\-–—].*?)(?=\n\s*(?:[IVXLCDM]+\s*[\-–—]|Art\.|§|CAPÍTULO|Seção|Parágrafo|ANEXO)|$)', 
         re.MULTILINE | re.DOTALL
@@ -177,6 +183,8 @@ def auditar_pontuacao_incisos(texto_completo):
         if not match_numeral: continue
         numeral_romano = match_numeral.group(1)
         current_val = _roman_to_int(numeral_romano)
+        
+        # Contexto limpo (remove quebras de linha para exibição)
         trecho_limpo = re.sub(r'\s+', ' ', inciso_texto)[:60] + "..."
 
         # 1. Sequência
@@ -198,14 +206,11 @@ def auditar_pontuacao_incisos(texto_completo):
         pos_fim = match.end()
         proximo_trecho = texto_completo[pos_fim:pos_fim+200].lstrip()
         
-        if re.match(r'[IVXLCDM]+\s*[\-–—]', proximo_trecho):
-            is_last_in_list = False
-        elif re.match(r'(Art\.|§|CAPÍTULO|Seção|Parágrafo|ANEXO)', proximo_trecho):
-            is_last_in_list = True
-        elif not proximo_trecho:
-            is_last_in_list = True
-        else:
-            is_last_in_list = True
+        # Lookahead com travessão
+        if re.match(r'[IVXLCDM]+\s*[\-–—]', proximo_trecho): is_last_in_list = False
+        elif re.match(r'(Art\.|§|CAPÍTULO|Seção|Parágrafo|ANEXO)', proximo_trecho): is_last_in_list = True
+        elif not proximo_trecho: is_last_in_list = True
+        else: is_last_in_list = True
 
         if inciso_texto.endswith(':'): continue
 
@@ -221,7 +226,9 @@ def auditar_pontuacao_incisos(texto_completo):
     return {"status": "FALHA", "detalhe": erros[:10]}
 
 def auditar_pontuacao_alineas(texto_completo):
+
     erros = []
+    
     padrao_alinea = re.compile(
         r'(^\s*[a-z]\).*?)(?=\n\s*(?:[a-z]\)|[IVXLCDM]+\s*[\-–—]|Art\.|§|CAPÍTULO)|$)', 
         re.MULTILINE | re.DOTALL

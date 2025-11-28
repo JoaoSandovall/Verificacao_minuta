@@ -99,40 +99,32 @@ st.title("🔎 Auditor de Minutas de Resolução")
 
 tab_texto, tab_arquivo = st.tabs(["Colar Texto", "Anexar Arquivo"])
 
-# --- Lógica Central de Análise ---
 def analisar_e_exibir(texto_completo):
     if not texto_completo or not texto_completo.strip():
         st.warning("Texto fornecido está vazio ou contém apenas espaços.")
         return
 
-    # Limpa marca d'água
     texto_limpo = re.sub(r'\*?\s*MINUTA DE DOCUMENTO', '', texto_completo, flags=re.IGNORECASE)
     if not texto_limpo or not texto_limpo.strip():
         st.warning("Texto após remover 'MINUTA DE DOCUMENTO' está vazio.")
         return
 
-    # 1. Obtém regras dinâmicas (CEG vs CONDEL)
     regras_detectadas, tipo_doc = obter_regras(texto_limpo)
     st.info(f"🔍 Tipo de Documento Detectado: **Resolução {tipo_doc}**")
 
-    # 2. Separação Inicial de Regras
     regras_resolucao = {k: v for k, v in regras_detectadas.items() if not k.startswith("Anexo")}
     
-    # Pega as regras estruturais do Anexo (Capítulos, Seções, Hierarquia)
     regras_anexo = {k: v for k, v in regras_detectadas.items() if k.startswith("Anexo") and k != "Anexo (Identificação)"}
 
-    # 3. INCLUSÃO DAS REGRAS COMUNS NO ANEXO (Solicitado)
-    # Adicionamos manualmente as regras de formatação que também valem para o anexo
     regras_anexo["Artigos (Formato Numeração)"] = comuns.auditar_numeracao_artigos
     regras_anexo["Parágrafos (§ Espaçamento)"] = comuns.auditar_espacamento_paragrafo
     regras_anexo["Siglas (Uso do travessão)"] = comuns.auditar_uso_siglas
     regras_anexo["Incisos (Pontuação Estrita)"] = comuns.auditar_pontuacao_incisos
-    regras_anexo["Alíneas (Pontuação Estrita)"] = comuns.auditar_pontuacao_alineas
 
-    # 4. Identificação do Anexo
+    # Identificação do Anexo
     resultado_identificacao_anexo = auditar_anexo(texto_limpo)
 
-    # 5. Divisão do Texto
+    # Divisão do Texto
     texto_resolucao = texto_limpo
     texto_anexo = None
     match_anexo = re.search(r'^\s*ANEXO\s*$', texto_limpo, re.MULTILINE)
@@ -142,7 +134,6 @@ def analisar_e_exibir(texto_completo):
         texto_resolucao = texto_limpo[:split_point].strip()
         texto_anexo = texto_limpo[match_anexo.end():].strip()
 
-    # 6. Auditoria da Resolução
     ok_res, falha_res = executar_auditoria(texto_resolucao, regras_resolucao)
 
     # Adiciona resultado da identificação do Anexo
@@ -158,7 +149,7 @@ def analisar_e_exibir(texto_completo):
     st.divider()
     exibir_resultados(f"Resultado da Resolução Principal ({tipo_doc})", ok_res, falha_res)
 
-    # 7. Auditoria do Anexo (Agora com as regras extras)
+    # Auditoria do Anexo
     if texto_anexo and texto_anexo.strip():
         st.divider()
         ok_anexo, falha_anexo = executar_auditoria(texto_anexo, regras_anexo)

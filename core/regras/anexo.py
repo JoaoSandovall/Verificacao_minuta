@@ -2,6 +2,7 @@ import re
 from core.utils import _roman_to_int
 
 def auditar_anexo(texto_completo):
+    """Verifica se a seção 'ANEXO' existe e formatação."""
     match_correto = re.search(r'\n\s*(ANEXO)\s*(?=\n|$)', texto_completo)
     if match_correto:
          return {"status": "OK", "detalhe": "Seção 'ANEXO' encontrada e formatada corretamente."}
@@ -14,6 +15,7 @@ def auditar_anexo(texto_completo):
     return {"status": "OK", "detalhe": "Aviso: Nenhuma seção 'ANEXO' foi encontrada (Não obrigatório)."}
 
 def auditar_sequencia_capitulos_anexo(texto_completo):
+    """(Anexo) Verifica a sequência dos Capítulos (I, II, III...)."""
     erros = []
     matches = re.finditer(r'^\s*CAPÍTULO\s+([IVXLCDM]+)', texto_completo, re.MULTILINE)
     capitulos = [match.group(1) for match in matches]
@@ -36,6 +38,7 @@ def auditar_sequencia_capitulos_anexo(texto_completo):
         return {"status": "FALHA", "detalhe": erros}
 
 def auditar_sequencia_secoes_anexo(texto_completo):
+    """(Anexo) Verifica a sequência das Seções (I, II, III...) dentro de cada Capítulo."""
     erros = []
     blocos_capitulo = re.split(r'^\s*CAPÍTULO\s+[IVXLCDM]+', texto_completo, flags=re.MULTILINE)
     capitulos_encontrados = re.findall(r'^\s*CAPÍTULO\s+([IVXLCDM]+)', texto_completo, re.MULTILINE)
@@ -63,6 +66,7 @@ def auditar_sequencia_secoes_anexo(texto_completo):
         return {"status": "FALHA", "detalhe": erros}
 
 def auditar_sequencia_artigos_anexo(texto_completo):
+    
     erros = []
     matches = re.finditer(r'Art\.\s*(\d+)', texto_completo)
     artigos = [int(match.group(1)) for match in matches]
@@ -131,8 +135,9 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
             continue
             
         if tipo_atual == "Artigo/Paragrafo":
-            if not linha_completa.endswith('.'):
-                erros.append(f"Pontuação de Declaração Incorreta: '{linha_completa}' deve terminar com '.'.")
+            # CORREÇÃO: Aceita Ponto Final (.) OU Dois-Pontos (:)
+            if not (linha_completa.endswith('.') or linha_completa.endswith(':')):
+                erros.append(f"Pontuação de Declaração Incorreta: '{linha_completa}' deve terminar com '.' ou ':'.")
             continue
             
         if tipo_atual in ("Inciso", "Alinea"):
@@ -146,13 +151,17 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
                 elif re.match(r'^[a-z]\)', marcador_proximo):
                     tipo_proximo = "Alinea"
             
+            # Se for item de lista (intermediário)
             if (proximo_match and tipo_proximo == tipo_atual) or \
                (tipo_atual == "Alinea" and tipo_proximo == "Inciso"):
-                if not (linha_completa.endswith(';') or linha_completa.endswith('; e') or linha_completa.endswith('; ou')):
-                    erros.append(f"Pontuação de Lista Incorreta: '{linha_completa}' deve terminar com ';', '; e', ou '; ou'.")
+                # CORREÇÃO: Aceita também Dois-Pontos (:) caso introduza itens não mapeados
+                if not (linha_completa.endswith(';') or linha_completa.endswith('; e') or linha_completa.endswith('; ou') or linha_completa.endswith(':')):
+                    erros.append(f"Pontuação de Lista Incorreta: '{linha_completa}' deve terminar com ';', '; e', '; ou' ou ':'.")
             else:
-                if not linha_completa.endswith('.'):
-                    erros.append(f"Pontuação de Fim de Lista Incorreta: '{linha_completa}' deveria terminar com '.' (ponto final), pois é o último item do seu bloco.")
+                # Se for fim de lista
+                # CORREÇÃO: Aceita também Dois-Pontos (:)
+                if not (linha_completa.endswith('.') or linha_completa.endswith(':')):
+                    erros.append(f"Pontuação de Fim de Lista Incorreta: '{linha_completa}' deveria terminar com '.' (ponto final) ou ':'.")
 
     if not erros:
         return {"status": "OK", "detalhe": "A pontuação hierárquica do Anexo está correta."}

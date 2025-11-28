@@ -1,5 +1,4 @@
 import re
-# Importa os módulos de regras que criamos/separamos
 from .regras import comuns, condel, ceg, anexo
 
 def identificar_tipo_resolucao(texto):
