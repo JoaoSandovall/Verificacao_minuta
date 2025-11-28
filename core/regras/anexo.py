@@ -2,7 +2,6 @@ import re
 from core.utils import _roman_to_int
 
 def auditar_anexo(texto_completo):
-    """Verifica se a seção 'ANEXO' existe e formatação."""
     match_correto = re.search(r'\n\s*(ANEXO)\s*(?=\n|$)', texto_completo)
     if match_correto:
          return {"status": "OK", "detalhe": "Seção 'ANEXO' encontrada e formatada corretamente."}
@@ -15,7 +14,6 @@ def auditar_anexo(texto_completo):
     return {"status": "OK", "detalhe": "Aviso: Nenhuma seção 'ANEXO' foi encontrada (Não obrigatório)."}
 
 def auditar_sequencia_capitulos_anexo(texto_completo):
-    """(Anexo) Verifica a sequência dos Capítulos (I, II, III...)."""
     erros = []
     matches = re.finditer(r'^\s*CAPÍTULO\s+([IVXLCDM]+)', texto_completo, re.MULTILINE)
     capitulos = [match.group(1) for match in matches]
@@ -38,7 +36,6 @@ def auditar_sequencia_capitulos_anexo(texto_completo):
         return {"status": "FALHA", "detalhe": erros}
 
 def auditar_sequencia_secoes_anexo(texto_completo):
-    """(Anexo) Verifica a sequência das Seções (I, II, III...) dentro de cada Capítulo."""
     erros = []
     blocos_capitulo = re.split(r'^\s*CAPÍTULO\s+[IVXLCDM]+', texto_completo, flags=re.MULTILINE)
     capitulos_encontrados = re.findall(r'^\s*CAPÍTULO\s+([IVXLCDM]+)', texto_completo, re.MULTILINE)
@@ -66,7 +63,6 @@ def auditar_sequencia_secoes_anexo(texto_completo):
         return {"status": "FALHA", "detalhe": erros}
 
 def auditar_sequencia_artigos_anexo(texto_completo):
-    """(Anexo) Verifica se a sequência de Artigos está correta."""
     erros = []
     matches = re.finditer(r'Art\.\s*(\d+)', texto_completo)
     artigos = [int(match.group(1)) for match in matches]
@@ -76,7 +72,7 @@ def auditar_sequencia_artigos_anexo(texto_completo):
 
     expected_num = 1
     if artigos[0] != 1:
-        erros.append(f"O primeiro Artigo do Anexo não é 'Art. 1º'. Encontrado: 'Art. {artigos[0]}'.")
+        erros.append(f"O primeiro Artigo do Anexo não é 'Art. 1ᵒ'. Encontrado: 'Art. {artigos[0]}'.")
         expected_num = artigos[0]
 
     for num in artigos:
@@ -91,13 +87,11 @@ def auditar_sequencia_artigos_anexo(texto_completo):
         return {"status": "FALHA", "detalhe": erros}
 
 def auditar_pontuacao_hierarquica_anexo(texto_completo):
-    """
-    (NOVA REGRA - Anexo) Verifica a pontuação hierárquica.
-    """
+    
     erros = []
     
     padrao_itens = re.compile(
-        r"^(?:[ \t]*)((Art\.\s*\d+[º°\.]?|Parágrafo\s+único\.?|§\s*\d+[º°\.]?)|([IVXLCDM]+[\s\-–])|([a-z]\)))(.*)", 
+        r"^(?:[ \t]*)((Art\.\s*\d+[ᵒ\.]?|Parágrafo\s+único\.?|§\s*\d+[ᵒ\.]?)|([IVXLCDM]+[\s\-–—])|([a-z]\)))(.*)", 
         re.MULTILINE | re.IGNORECASE
     )
     

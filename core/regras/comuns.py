@@ -15,19 +15,19 @@ def auditar_numeracao_artigos(texto_completo):
         match_texto_completo = match.string[match.start():match.end()+20].split('\n')[0]
         trecho_apos_artigo = texto_completo[pos_fim_match : pos_fim_match + 3]
 
+        # REGRA NOVA: Usa 'ᵒ'
         if 1 <= numero_artigo <= 9:
-            padrao_esperado = "°  " 
+            padrao_esperado = "ᵒ  " 
             if not trecho_apos_artigo.startswith(padrao_esperado):
-                if trecho_apos_artigo.startswith('º'):
-                    erros.append(f"No 'Art. {numero_artigo}', o símbolo ordinal está incorreto. Use '°'. Trecho: '{match_texto_completo}...'")
-                elif not trecho_apos_artigo.startswith('°'):
-                    erros.append(f"O 'Art. {numero_artigo}' deve ser seguido pelo ordinal '°'. Trecho: '{match_texto_completo}...'")
-                elif not trecho_apos_artigo.startswith('°  '):
-                    erros.append(f"Após 'Art. {numero_artigo}°', deve haver dois espaços. Trecho: '{match_texto_completo}...'")
+                if trecho_apos_artigo.startswith('º') or trecho_apos_artigo.startswith('°'):
+                    erros.append(f"No 'Art. {numero_artigo}', o símbolo ordinal está incorreto. Use 'ᵒ' (o caractere específico). Trecho: '{match_texto_completo}...'")
+                else:
+                    erros.append(f"O 'Art. {numero_artigo}' deve ser seguido pelo ordinal 'ᵒ' e dois espaços. Trecho: '{match_texto_completo}...'")
+        
         elif numero_artigo >= 10:
             padrao_esperado = ".  "
             if not trecho_apos_artigo.startswith(padrao_esperado):
-                if trecho_apos_artigo.startswith('°') or trecho_apos_artigo.startswith('º'):
+                if trecho_apos_artigo.startswith('°') or trecho_apos_artigo.startswith('º') or trecho_apos_artigo.startswith('ᵒ'):
                     erros.append(f"O 'Art. {numero_artigo}' deve usar ponto final (.), não ordinal. Trecho: '{match_texto_completo}...'")
                 elif not trecho_apos_artigo.startswith('.'):
                     erros.append(f"O 'Art. {numero_artigo}' deve ser seguido por ponto (.). Trecho: '{match_texto_completo}...'")
@@ -40,7 +40,7 @@ def auditar_numeracao_artigos(texto_completo):
         return {"status": "FALHA", "detalhe": list(set(erros))[:10]}
 
 def auditar_espacamento_paragrafo(texto_completo):
-    """Verifica parágrafos (§). Aceita '§ 10' sem ponto."""
+    """Verifica parágrafos (§). Aceita '§ 10' sem ponto. Usa 'ᵒ'."""
     erros = []
     matches_numerados = re.finditer(r'^\s*§\s+(\d+)', texto_completo, re.MULTILINE)
 
@@ -51,12 +51,13 @@ def auditar_espacamento_paragrafo(texto_completo):
         trecho_apos_numero = texto_completo[pos_fim_match : pos_fim_match + 3]
         match_texto = match.group(0)
 
+        # REGRA NOVA: Usa 'ᵒ'
         if 1 <= numero_paragrafo <= 9:
-            if not trecho_apos_numero.startswith("°  "):
-                erros.append(f"O '§ {numero_paragrafo}' deve ter '°' e dois espaços. Trecho: '{match_texto}...'")
+            if not trecho_apos_numero.startswith("ᵒ  "):
+                erros.append(f"O '§ {numero_paragrafo}' deve ter 'ᵒ' e dois espaços. Trecho: '{match_texto}...'")
 
         elif numero_paragrafo >= 10:
-            if trecho_apos_numero.startswith('°') or trecho_apos_numero.startswith('º'):
+            if trecho_apos_numero.startswith('°') or trecho_apos_numero.startswith('º') or trecho_apos_numero.startswith('ᵒ'):
                  erros.append(f"O '§ {numero_paragrafo}' não deve usar ordinal. Trecho: '{match_texto}...'")
             elif trecho_apos_numero.startswith('.'):
                 if not trecho_apos_numero.startswith('.  '):
@@ -133,22 +134,35 @@ def auditar_assinatura(texto_completo):
     return {"status": "OK", "detalhe": "Assinatura correta."}
 
 def auditar_fecho_vigencia(texto_completo):
+    """Verifica cláusula de vigência. Aceita data com 'ᵒ'."""
     if "Esta Resolução entra em vigor" not in texto_completo:
          return {"status": "FALHA", "detalhe": ["Cláusula de vigência não encontrada."]}
+    
+    # Valida formato de data específico na vigência, se houver
+    padrao_data_especifica = re.compile(
+        r"(Esta\s+Resolução\s+entra\s+em\s+vigor\s+em\s+"
+        r"(\d{1,2})[ᵒ]\s+de\s+" # Agora exige 'ᵒ' se for usado ordinal
+        r"([a-záçãõéêíóôú]+)\s+de\s+"
+        r"(\d{4})\.)"
+    )
+    match_data = padrao_data_especifica.search(texto_completo)
+    
+    # Se achou data com ordinal, verifica se o caractere é o correto (a regex já filtrou pelo correto)
+    # Se tiver usando 'º' ou '°', não vai dar match na regex acima e pode cair no erro genérico ou passar batido
+    # Vamos fazer uma busca "suja" para avisar o usuário
+    busca_errada = re.search(r"entra\s+em\s+vigor\s+em\s+\d{1,2}[º°]\s+de", texto_completo)
+    if busca_errada:
+        return {"status": "FALHA", "detalhe": [f"Data de vigência usando ordinal incorreto. Use 'ᵒ'. Trecho: '{busca_errada.group(0)}'"]}
+
     return {"status": "OK", "detalhe": "Vigência encontrada."}
 
-# --- REGRAS DE PONTUAÇÃO ESTRITA (CORRIGIDAS) ---
+# --- REGRAS DE PONTUAÇÃO ESTRITA (CORRIGIDAS - DECRETO 12.002) ---
 
 def auditar_pontuacao_incisos(texto_completo):
-    """
-    (REGRA ESTRITA) Verifica a sequência e pontuação de Incisos.
-    CORRIGIDO: Detecta se o inciso é o último com base no PRÓXIMO elemento.
-    """
     erros = []
     
-    # Regex: Exige traço e para antes de estruturas
     padrao_inciso = re.compile(
-        r'(^[ \t]*[IVXLCDM]+\s*[\-–].*?)(?=\n\s*(?:[IVXLCDM]+\s*[\-–]|Art\.|§|CAPÍTULO|Seção|Parágrafo|ANEXO)|$)', 
+        r'(^[ \t]*[IVXLCDM]+\s*[\-–—].*?)(?=\n\s*(?:[IVXLCDM]+\s*[\-–—]|Art\.|§|CAPÍTULO|Seção|Parágrafo|ANEXO)|$)', 
         re.MULTILINE | re.DOTALL
     )
     
@@ -181,36 +195,24 @@ def auditar_pontuacao_incisos(texto_completo):
 
         # 2. Pontuação
         is_last_in_list = False
-        
-        # Verifica o que vem DEPOIS deste inciso no texto bruto
         pos_fim = match.end()
-        
-        # Olha os próximos 200 caracteres (ou até o fim) para ver o que começa
         proximo_trecho = texto_completo[pos_fim:pos_fim+200].lstrip()
         
-        # Se o próximo trecho começa com outro Inciso (Romano + traço) -> NÃO É FIM
-        if re.match(r'[IVXLCDM]+\s*[\-–]', proximo_trecho):
+        if re.match(r'[IVXLCDM]+\s*[\-–—]', proximo_trecho):
             is_last_in_list = False
-        # Se começa com estrutura de fechamento (Art, §, Cap) -> É FIM
         elif re.match(r'(Art\.|§|CAPÍTULO|Seção|Parágrafo|ANEXO)', proximo_trecho):
             is_last_in_list = True
-        # Se acabou o texto -> É FIM
         elif not proximo_trecho:
             is_last_in_list = True
         else:
-            # Caso padrão: Se não tem outro inciso colado, assume fim
             is_last_in_list = True
 
-        # Exceção: Se termina com dois-pontos, introduz alíneas (não termina com ponto)
-        if inciso_texto.endswith(':'):
-            continue
+        if inciso_texto.endswith(':'): continue
 
-        # Aplica regra
         if is_last_in_list:
             if not inciso_texto.endswith('.'):
                 erros.append(f"O último inciso do bloco ({numeral_romano}) deve terminar com ponto final (.). Trecho: '{trecho_limpo}'")
         else:
-            # Intermediário
             if not (inciso_texto.endswith(';') or inciso_texto.endswith('; e') or inciso_texto.endswith('; ou')):
                 erros.append(f"O inciso intermediário ({numeral_romano}) deve terminar com ponto e vírgula (;). Trecho: '{trecho_limpo}'")
 
@@ -219,14 +221,9 @@ def auditar_pontuacao_incisos(texto_completo):
     return {"status": "FALHA", "detalhe": erros[:10]}
 
 def auditar_pontuacao_alineas(texto_completo):
-    """
-    (REGRA ESTRITA) Verifica Alíneas (a, b, c...).
-    CORRIGIDO: Se depois da alínea vem um Inciso, ela deve ser ponto e vírgula (;).
-    """
     erros = []
-    
     padrao_alinea = re.compile(
-        r'(^\s*[a-z]\).*?)(?=\n\s*(?:[a-z]\)|[IVXLCDM]+\s*[\-–]|Art\.|§|CAPÍTULO)|$)', 
+        r'(^\s*[a-z]\).*?)(?=\n\s*(?:[a-z]\)|[IVXLCDM]+\s*[\-–—]|Art\.|§|CAPÍTULO)|$)', 
         re.MULTILINE | re.DOTALL
     )
     matches = list(padrao_alinea.finditer(texto_completo))
@@ -240,7 +237,6 @@ def auditar_pontuacao_alineas(texto_completo):
         trecho_visual = re.sub(r'\s+', ' ', texto)[:60] + "..."
         current_ord = ord(letra)
         
-        # 1. Sequência
         if letra == 'a':
             pass
         elif i > 0:
@@ -248,37 +244,26 @@ def auditar_pontuacao_alineas(texto_completo):
             prev_texto = prev_match.group(1).strip()
             prev_letra = prev_texto[0]
             gap = texto_completo[prev_match.end():match.start()]
-            
             tem_quebra = re.search(r'(Art\.|§|[IVXLCDM])', gap)
             if not tem_quebra and current_ord != ord(prev_letra) + 1:
                  erros.append(f"Sequência de alíneas incorreta. Esperado '{chr(ord(prev_letra)+1)})', mas encontrado '{letra})'. Trecho: '{trecho_visual}'")
 
-        # 2. Pontuação
-        # Olha para o futuro (Gap) para decidir
         pos_fim = match.end()
         proximo_trecho = texto_completo[pos_fim:pos_fim+200].lstrip()
         
-        is_final_structure = False # Fecha tudo (.)
-        continues_parent = False   # Volta pro inciso (;)
-        continues_alinea = False   # Vai pra próxima alínea (;)
+        is_final_structure = False
+        continues_parent = False
+        continues_alinea = False
 
-        if re.match(r'[a-z]\)', proximo_trecho):
-            continues_alinea = True
-        elif re.match(r'[IVXLCDM]+\s*[\-–]', proximo_trecho):
-            continues_parent = True
-        elif re.match(r'(Art\.|§|CAPÍTULO|Seção|ANEXO)', proximo_trecho) or not proximo_trecho:
-            is_final_structure = True
-        else:
-            # Se não reconheceu nada estrutural, assume fim
-            is_final_structure = True
+        if re.match(r'[a-z]\)', proximo_trecho): continues_alinea = True
+        elif re.match(r'[IVXLCDM]+\s*[\-–—]', proximo_trecho): continues_parent = True
+        elif re.match(r'(Art\.|§|CAPÍTULO|Seção|ANEXO)', proximo_trecho) or not proximo_trecho: is_final_structure = True
+        else: is_final_structure = True
 
-        # Aplica Regra
         if is_final_structure:
             if not texto.endswith('.'):
                 erros.append(f"A última alínea ('{letra})') deve terminar com ponto final (.). Trecho: '{trecho_visual}'")
-        
         elif continues_parent or continues_alinea:
-            # Se continua como alínea ou volta pra inciso, é ponto e vírgula
             if not (texto.endswith(';') or texto.endswith('; e') or texto.endswith('; ou')):
                  erros.append(f"A alínea intermediária ('{letra})') deve terminar com ponto e vírgula (;). Trecho: '{trecho_visual}'")
 
