@@ -1,178 +1,308 @@
-import streamlit as st
-import docx
-import PyPDF2
-from io import BytesIO
-import re
+# import streamlit as st
+# import docx
+# import PyPDF2
+# from io import BytesIO
+# import re
+# import html
 
-# Importa a nova função "inteligente"
-from core import obter_regras
-# Importa a regra de anexo separada para verificação inicial
-from core.regras.anexo import auditar_anexo
-# Importa as regras comuns para forçar o uso no Anexo
-from core.regras import comuns
+# # Importações do Core
+# from core import obter_regras
+# from core.regras.anexo import auditar_anexo
+# from core.regras import comuns
 
-def extrair_texto(arquivo_enviado):
-    """Extrai texto de diferentes tipos de arquivo."""
-    try:
-        if arquivo_enviado.type == "text/plain":
-            return arquivo_enviado.read().decode("utf-8")
-        elif arquivo_enviado.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            doc = docx.Document(BytesIO(arquivo_enviado.read()))
-            return "\n".join([para.text for para in doc.paragraphs])
-        elif arquivo_enviado.type == "application/pdf":
-            texto = ""
-            leitor_pdf = PyPDF2.PdfReader(BytesIO(arquivo_enviado.read()))
-            for pagina in leitor_pdf.pages:
-                 page_text = pagina.extract_text()
-                 if page_text:
-                    texto += page_text + "\n"
-            return texto
-    except Exception as e:
-        st.error(f"Erro ao processar o arquivo: {e}")
-        return None
+# # --- CONFIGURAÇÃO DA PÁGINA ---
+# st.set_page_config(page_title="Auditor de Minutas", layout="wide")
 
-def executar_auditoria(texto_para_auditar, regras_dict):
-    """Executa um dicionário de regras em um bloco de texto."""
-    resultados_ok = []
-    resultados_falha = []
+# # --- ESTILOS CSS (Visual Profissional) ---
+# st.markdown("""
+#     <style>
+#     /* Visual de Folha de Papel */
+#     .documento-visual {
+#         background-color: #ffffff;
+#         padding: 50px;
+#         border: 1px solid #ddd;
+#         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+#         font-family: 'Times New Roman', serif;
+#         font-size: 18px;
+#         line-height: 1.6;
+#         color: #2c3e50;
+#         white-space: pre-wrap; /* Mantém quebras de linha */
+#         border-radius: 5px;
+#     }
     
-    if not texto_para_auditar:
-        return [], []
+#     /* Destaque de Erro (Highlight) */
+#     mark.erro-highlight {
+#         background-color: #ffcccc;
+#         color: #990000;
+#         border-bottom: 2px solid #ff0000;
+#         padding: 2px 0;
+#         font-weight: bold;
+#     }
 
-    for nome_regra, funcao_auditoria in regras_dict.items():
-        # Pula a regra de identificação do anexo (já feita separadamente)
-        if nome_regra == "Anexo (Identificação)":
-            continue
-
-        try:
-            resultado = funcao_auditoria(texto_para_auditar)
-            if resultado["status"] == "FALHA":
-                detalhes = resultado.get("detalhe", ["Erro desconhecido na regra."])
-                if not isinstance(detalhes, list):
-                    detalhes = [str(detalhes)]
-                else:
-                    detalhes = [str(d) for d in detalhes]
-                resultados_falha.append((nome_regra, detalhes))
-            else:
-                resultados_ok.append((nome_regra, resultado.get("detalhe", "")))
-        except Exception as e:
-            resultados_falha.append((nome_regra, [f"Erro interno ao executar a regra: {e}"])) 
-
-    return resultados_ok, resultados_falha
-
-def exibir_resultados(titulo, resultados_ok, resultados_falha):
-    """Exibe os resultados na interface."""
-    st.subheader(titulo)
-    col_erros, col_corretos = st.columns(2)
-    with col_erros:
-        st.markdown("##### 👎 Itens com Erros:")
-        if not resultados_falha:
-            st.info("Nenhum erro encontrado.")
-        else:
-            for nome, detalhes in resultados_falha:
-                st.error(f"**{nome}**", icon="❌")
-                if isinstance(detalhes, list):
-                    for erro in detalhes:
-                        st.write(f"&nbsp;&nbsp;&nbsp;&nbsp;- {erro}")
-                else:
-                     st.write(f"&nbsp;&nbsp;&nbsp;&nbsp;- {detalhes}")
-    with col_corretos:
-        st.markdown("##### 👍 Itens Corretos:")
-        if not resultados_ok:
-            st.info("Nenhum item verificado passou na auditoria.")
-        else:
-            for nome, detalhe in resultados_ok:
-                st.success(f"**{nome}**", icon="✅")
-                detalhe_str = str(detalhe) if detalhe is not None else ""
-                if detalhe_str.startswith("Aviso:"):
-                    st.warning(f"&nbsp;&nbsp;&nbsp;&nbsp;{detalhe_str}")
-                elif detalhe_str:
-                    st.caption(f"&nbsp;&nbsp;&nbsp;&nbsp;{detalhe_str}")
-
-def limpar_caixa_texto():
-    if "texto_colado_input" in st.session_state:
-        st.session_state.texto_colado_input = ""
-
-# --- Interface Gráfica ---
-st.set_page_config(page_title="Auditor de Minutas", layout="wide")
-st.title("🔎 Auditor de Minutas de Resolução")
-
-tab_texto, tab_arquivo = st.tabs(["Colar Texto", "Anexar Arquivo"])
-
-def analisar_e_exibir(texto_completo):
-    if not texto_completo or not texto_completo.strip():
-        st.warning("Texto fornecido está vazio ou contém apenas espaços.")
-        return
-
-    texto_limpo = re.sub(r'\*?\s*MINUTA DE DOCUMENTO', '', texto_completo, flags=re.IGNORECASE)
-    if not texto_limpo or not texto_limpo.strip():
-        st.warning("Texto após remover 'MINUTA DE DOCUMENTO' está vazio.")
-        return
-
-    regras_detectadas, tipo_doc = obter_regras(texto_limpo)
-    st.info(f"🔍 Tipo de Documento Detectado: **Resolução {tipo_doc}**")
-
-    regras_resolucao = {k: v for k, v in regras_detectadas.items() if not k.startswith("Anexo")}
+#     /* Card de Erro na Lateral */
+#     .erro-card {
+#         background-color: #fff0f0;
+#         border-left: 5px solid #ff4444;
+#         padding: 15px;
+#         margin-bottom: 15px;
+#         border-radius: 5px;
+#         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+#     }
     
-    regras_anexo = {k: v for k, v in regras_detectadas.items() if k.startswith("Anexo") and k != "Anexo (Identificação)"}
+#     .erro-titulo {
+#         font-weight: bold;
+#         color: #cc0000;
+#         font-size: 14px;
+#         margin-bottom: 5px;
+#     }
+    
+#     .erro-desc {
+#         font-size: 13px;
+#         color: #333;
+#     }
 
-    regras_anexo["Artigos (Formato Numeração)"] = comuns.auditar_numeracao_artigos
-    regras_anexo["Parágrafos (§ Espaçamento)"] = comuns.auditar_espacamento_paragrafo
-    regras_anexo["Siglas (Uso do travessão)"] = comuns.auditar_uso_siglas
-    regras_anexo["Incisos (Pontuação Estrita)"] = comuns.auditar_pontuacao_incisos
+#     /* Botão "Ver no Texto" (Link Âncora) */
+#     a.btn-ir {
+#         display: inline-block;
+#         margin-top: 8px;
+#         padding: 4px 10px;
+#         background-color: #ff4444;
+#         color: white !important;
+#         text-decoration: none;
+#         border-radius: 4px;
+#         font-size: 12px;
+#     }
+#     a.btn-ir:hover { background-color: #cc0000; }
+    
+#     /* Botão Voltar Flutuante (Opcional) */
+#     .stButton button {
+#         width: 100%;
+#     }
+#     </style>
+# """, unsafe_allow_html=True)
 
-    # Identificação do Anexo
-    resultado_identificacao_anexo = auditar_anexo(texto_limpo)
+# # --- FUNÇÕES AUXILIARES ---
 
-    # Divisão do Texto
-    texto_resolucao = texto_limpo
-    texto_anexo = None
-    match_anexo = re.search(r'^\s*ANEXO\s*$', texto_limpo, re.MULTILINE)
+# def extrair_texto(arquivo_enviado):
+#     try:
+#         if arquivo_enviado.type == "text/plain":
+#             return arquivo_enviado.read().decode("utf-8")
+#         elif arquivo_enviado.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+#             doc = docx.Document(BytesIO(arquivo_enviado.read()))
+#             return "\n".join([para.text for para in doc.paragraphs])
+#         elif arquivo_enviado.type == "application/pdf":
+#             texto = ""
+#             leitor_pdf = PyPDF2.PdfReader(BytesIO(arquivo_enviado.read()))
+#             for pagina in leitor_pdf.pages:
+#                  page_text = pagina.extract_text()
+#                  if page_text: texto += page_text + "\n"
+#             return texto
+#     except Exception as e:
+#         st.error(f"Erro ao ler arquivo: {e}")
+#         return None
 
-    if match_anexo:
-        split_point = match_anexo.start()
-        texto_resolucao = texto_limpo[:split_point].strip()
-        texto_anexo = texto_limpo[match_anexo.end():].strip()
+# def executar_auditoria(texto_para_auditar, regras_dict):
+#     """Roda as regras e retorna listas limpas."""
+#     resultados_ok = []
+#     resultados_falha = []
+    
+#     if not texto_para_auditar: return [], []
 
-    ok_res, falha_res = executar_auditoria(texto_resolucao, regras_resolucao)
+#     for nome_regra, funcao_auditoria in regras_dict.items():
+#         if nome_regra == "Anexo (Identificação)": continue # Tratado à parte
 
-    # Adiciona resultado da identificação do Anexo
-    detalhes_anexo_id = resultado_identificacao_anexo.get("detalhe", [])
-    if not isinstance(detalhes_anexo_id, list): detalhes_anexo_id = [str(detalhes_anexo_id)]
-    else: detalhes_anexo_id = [str(d) for d in detalhes_anexo_id]
+#         try:
+#             resultado = funcao_auditoria(texto_para_auditar)
+#             if resultado["status"] == "FALHA":
+#                 detalhes = resultado.get("detalhe", ["Erro genérico."])
+#                 if not isinstance(detalhes, list): detalhes = [str(detalhes)]
+#                 else: detalhes = [str(d) for d in detalhes]
+#                 resultados_falha.append((nome_regra, detalhes))
+#             else:
+#                 resultados_ok.append((nome_regra, resultado.get("detalhe", "")))
+#         except Exception as e:
+#             resultados_falha.append((nome_regra, [f"Erro interno: {e}"])) 
 
-    if resultado_identificacao_anexo["status"] == "FALHA":
-        falha_res.append(("Anexo (Identificação)", detalhes_anexo_id))
-    else:
-        ok_res.append(("Anexo (Identificação)", str(resultado_identificacao_anexo.get("detalhe", ""))))
+#     return resultados_ok, resultados_falha
 
-    st.divider()
-    exibir_resultados(f"Resultado da Resolução Principal ({tipo_doc})", ok_res, falha_res)
+# def gerar_html_anotado(texto_original, lista_erros):
+#     """
+#     Transforma o texto puro em HTML com marcações <mark> onde houver erros.
+#     Usa o padrão "Trecho: '...'" das mensagens de erro para localizar o texto.
+#     """
+#     # 1. Escapar HTML do texto original para evitar injeção ou quebra de layout
+#     texto_html = html.escape(texto_original)
+    
+#     mapa_erros_visual = [] # Lista de dicionários para montar o painel lateral
+#     contador = 0
+    
+#     # Vamos processar erro por erro
+#     for nome_regra, detalhes in lista_erros:
+#         for msg in detalhes:
+#             # Tenta extrair o trecho citado na mensagem
+#             match_trecho = re.search(r"Trecho: ['\"](.*?)['\"]", msg)
+            
+#             trecho_encontrado = None
+#             if match_trecho:
+#                 snippet_cru = match_trecho.group(1)
+#                 # Remove reticências se houver, para busca exata
+#                 if snippet_cru.endswith("..."): snippet_cru = snippet_cru[:-3]
+                
+#                 # Escapa o snippet também para bater com o texto_html
+#                 snippet_html = html.escape(snippet_cru)
+                
+#                 # Verifica se existe no texto
+#                 if snippet_html in texto_html and len(snippet_html) > 3:
+#                     trecho_encontrado = snippet_html
 
-    # Auditoria do Anexo
-    if texto_anexo and texto_anexo.strip():
-        st.divider()
-        ok_anexo, falha_anexo = executar_auditoria(texto_anexo, regras_anexo)
-        exibir_resultados("Resultado do Anexo", ok_anexo, falha_anexo)
-    elif match_anexo and (not texto_anexo or not texto_anexo.strip()):
-        st.divider()
-        st.info("Seção 'ANEXO' encontrada, mas está vazia.")
+#             item_erro = {
+#                 "regra": nome_regra,
+#                 "msg": msg.replace(f"Trecho: '{match_trecho.group(1) if match_trecho else ''}'", "").strip(), # Limpa msg
+#                 "id": None
+#             }
 
-# --- Interface ---
-with tab_texto:
-    st.write("Copie e cole o texto completo da minuta na caixa abaixo para análise.")
-    texto_colado = st.text_area("Texto da Minuta:", height=350, label_visibility="collapsed", key="texto_colado_input")
-    col1, col2 = st.columns([4, 1])
-    if col1.button("Analisar Texto", type="primary", use_container_width=True):
-        if texto_colado: 
-            with st.spinner("Analisando..."): analisar_e_exibir(texto_colado)
-        else: st.warning("Cole um texto primeiro.")
-    if col2.button("Limpar", use_container_width=True, on_click=limpar_caixa_texto): pass
+#             if trecho_encontrado:
+#                 contador += 1
+#                 id_tag = f"erro_{contador}"
+#                 item_erro["id"] = id_tag
+                
+#                 # Cria a marcação HTML
+#                 # Nota: replace(..., 1) substitui apenas a primeira ocorrência encontrada para este erro específico
+#                 tag_mark = f'<mark id="{id_tag}" class="erro-highlight" title="{nome_regra}">{trecho_encontrado}</mark>'
+#                 texto_html = texto_html.replace(trecho_encontrado, tag_mark, 1)
+            
+#             mapa_erros_visual.append(item_erro)
+            
+#     return texto_html, mapa_erros_visual
 
-with tab_arquivo:
-    st.write("Envie um arquivo (.txt, .docx ou .pdf).")
-    arq = st.file_uploader("Anexe aqui:", type=['txt', 'docx', 'pdf'], label_visibility="collapsed")
-    if arq and st.button("Analisar Arquivo", type="primary", use_container_width=True):
-        with st.spinner("Analisando..."):
-            txt = extrair_texto(arq)
-            if txt: analisar_e_exibir(txt)
+# # --- GERENCIAMENTO DE ESTADO (SESSION STATE) ---
+# if 'tela_atual' not in st.session_state:
+#     st.session_state.tela_atual = 'editor' # 'editor' ou 'revisao'
+# if 'texto_cache' not in st.session_state:
+#     st.session_state.texto_cache = ""
+
+# def ir_para_revisao():
+#     st.session_state.tela_atual = 'revisao'
+
+# def ir_para_editor():
+#     st.session_state.tela_atual = 'editor'
+
+# # --- TELA 1: EDITOR (Entrada de Dados) ---
+# if st.session_state.tela_atual == 'editor':
+#     st.title("📝 Auditor de Minutas")
+#     st.markdown("Cole sua minuta abaixo para validar a formatação (CONDEL/CEG).")
+    
+#     col_txt, col_upload = st.tabs(["✍️ Colar Texto", "📂 Carregar Arquivo"])
+    
+#     texto_input = ""
+    
+#     with col_txt:
+#         # Se já tiver texto no cache, preenche a area
+#         val_area = st.text_area("Minuta:", value=st.session_state.texto_cache, height=400, label_visibility="collapsed")
+#         if st.button("Analisar Texto", type="primary"):
+#             if val_area.strip():
+#                 st.session_state.texto_cache = val_area
+#                 ir_para_revisao()
+#                 st.rerun()
+#             else:
+#                 st.warning("O texto está vazio.")
+
+#     with col_upload:
+#         arq = st.file_uploader("Formatos: .txt, .docx, .pdf", type=['txt', 'docx', 'pdf'])
+#         if arq and st.button("Analisar Arquivo"):
+#             txt_ext = extrair_texto(arq)
+#             if txt_ext:
+#                 st.session_state.texto_cache = txt_ext
+#                 ir_para_revisao()
+#                 st.rerun()
+
+# # --- TELA 2: REVISÃO (Visualização Rica) ---
+# else:
+#     # Header de Navegação
+#     c_voltar, c_titulo = st.columns([1, 6])
+#     with c_voltar:
+#         st.button("⬅️ Editar", on_click=ir_para_editor)
+#     with c_titulo:
+#         st.subheader("Resultado da Análise")
+
+#     texto_completo = st.session_state.texto_cache
+    
+#     # --- PROCESSAMENTO DO BACKEND ---
+#     # 1. Limpeza e Identificação
+#     texto_limpo = re.sub(r'\*?\s*MINUTA DE DOCUMENTO', '', texto_completo, flags=re.IGNORECASE)
+#     regras_detectadas, tipo_doc = obter_regras(texto_limpo)
+    
+#     # 2. Separação de Escopos
+#     regras_resolucao = {k: v for k, v in regras_detectadas.items() if not k.startswith("Anexo")}
+#     regras_anexo = {k: v for k, v in regras_detectadas.items() if k.startswith("Anexo") and k != "Anexo (Identificação)"}
+    
+#     # Injeção manual de regras comuns no Anexo (sua regra de negócio)
+#     regras_anexo.update({
+#         "Artigos": comuns.auditar_numeracao_artigos,
+#         "Parágrafos": comuns.auditar_espacamento_paragrafo,
+#         "Siglas": comuns.auditar_uso_siglas,
+#         "Incisos": comuns.auditar_pontuacao_incisos,
+#         "Alíneas": comuns.auditar_pontuacao_alineas
+#     })
+
+#     # 3. Execução das Auditorias
+#     # Resolução Principal
+#     texto_res = texto_limpo
+#     texto_anx = ""
+#     match_anexo = re.search(r'^\s*ANEXO\s*$', texto_limpo, re.MULTILINE)
+    
+#     if match_anexo:
+#         texto_res = texto_limpo[:match_anexo.start()].strip()
+#         texto_anx = texto_limpo[match_anexo.end():].strip()
+
+#     _, falhas_res = executar_auditoria(texto_res, regras_resolucao)
+    
+#     # Validação da Seção Anexo
+#     res_anexo_id = auditar_anexo(texto_limpo)
+#     if res_anexo_id["status"] == "FALHA":
+#         falhas_res.append(("Estrutura", res_anexo_id["detalhe"]))
+
+#     # Validação do Conteúdo do Anexo
+#     falhas_anx = []
+#     if texto_anx:
+#         _, falhas_anx = executar_auditoria(texto_anx, regras_anexo)
+
+#     # Combina todas as falhas para gerar o visual
+#     todas_falhas = falhas_res + falhas_anx
+
+#     # --- RENDERIZAÇÃO VISUAL ---
+    
+#     # Gera o HTML com <mark> e o mapa de erros
+#     html_doc, lista_erros_visual = gerar_html_anotado(texto_limpo, todas_falhas)
+
+#     col_doc, col_painel = st.columns([2, 1], gap="medium")
+
+#     with col_doc:
+#         st.markdown(f"**Documento Visualizado:** Resolução {tipo_doc}")
+#         # Injeta o HTML estilizado
+#         st.markdown(f'<div class="documento-visual">{html_doc}</div>', unsafe_allow_html=True)
+
+#     with col_painel:
+#         st.markdown("### 🛠️ Painel de Correção")
+        
+#         if not lista_erros_visual:
+#             st.success("Tudo certo! Nenhum erro encontrado. ✅")
+#         else:
+#             qtd = len(lista_erros_visual)
+#             st.warning(f"Encontrados **{qtd}** problemas.")
+            
+#             # Renderiza os cards
+#             for item in lista_erros_visual:
+#                 botao_html = ""
+#                 if item['id']:
+#                     # O href com #id faz o navegador rolar até o <mark id="...">
+#                     botao_html = f'<a href="#{item["id"]}" class="btn-ir" target="_self">🎯 Ver no Texto</a>'
+                
+#                 card_html = f"""
+#                 <div class="erro-card">
+#                     <div class="erro-titulo">{item['regra']}</div>
+#                     <div class="erro-desc">{item['msg']}</div>
+#                     {botao_html}
+#                 </div>
+#                 """
+#                 st.markdown(card_html, unsafe_allow_html=True)

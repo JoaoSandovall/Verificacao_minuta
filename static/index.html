@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditor de Minutas</title>
+    <link rel="stylesheet" href="/styles.css?v=2">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="app-container">
+        <header>
+            <div class="logo">🔎 Auditor de Minutas</div>
+        </header>
+
+        <main>
+            <div id="tela-editor" class="tela ativa">
+                <div class="input-card">
+                    <h2>Nova Análise</h2>
+                    <p>Cole o texto da resolução para começar.</p>
+                    
+                    <div class="tabs">
+                        <button class="tab-btn ativa" onclick="abrirTab('texto')">Colar Texto</button>
+                        <button class="tab-btn" onclick="abrirTab('arquivo')">Arquivo</button>
+                    </div>
+
+                    <div id="tab-texto" class="tab-content ativa">
+                        <textarea id="input-texto" placeholder="Cole sua minuta aqui..."></textarea>
+                    </div>
+
+                    <div id="tab-arquivo" class="tab-content">
+                        <div class="upload-area" id="drop-zone">
+                            <p>Upload de arquivo em breve.</p>
+                            <button class="btn-secundario">Selecionar Arquivo</button>
+                        </div>
+                    </div>
+
+                    <button class="btn-primario" onclick="analisarTexto()">🚀 Analisar Documento</button>
+                </div>
+            </div>
+
+            <div id="tela-revisao" class="tela">
+                <div class="toolbar">
+                    <button class="btn-voltar" onclick="voltarEditor()">⬅ Editar / Novo</button>
+                    <span id="tipo-documento-badge" class="badge">Analisando...</span>
+                </div>
+
+                <div class="split-view">
+                    <div class="doc-viewer">
+                        <div id="documento-renderizado" class="folha-papel"></div>
+                    </div>
+
+                    <div class="painel-erros">
+                        <h3>Painel de Correção</h3>
+                        <div id="lista-erros-container">
+                            
+                            <div id="grupo-resolucao" class="grupo-erros" style="display:none">
+                                <h4 class="titulo-secao">📄 Resolução Principal</h4>
+                                <div id="erros-resolucao-lista"></div>
+                            </div>
+
+                            <div id="grupo-anexo" class="grupo-erros" style="display:none">
+                                <h4 class="titulo-secao">📎 Anexo</h4>
+                                <div id="erros-anexo-lista"></div>
+                            </div>
+
+                            <div id="msg-sucesso" style="display:none; text-align:center; padding:20px; color:green; font-weight:bold;">
+                                ✅ Nenhum erro encontrado!
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js?v=2"></script>
+</body>
+</html>

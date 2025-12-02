@@ -1,0 +1,333 @@
+/* --- RESET E BASE --- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+    background-color: #e9ecef;
+    color: #333;
+    overflow-y: auto; 
+    min-height: 100vh;
+}
+
+/* --- CABEÇALHO --- */
+header {
+    background: #fff;
+    padding: 15px 40px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.logo {
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: #2c3e50;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* --- ESTRUTURA PRINCIPAL --- */
+.app-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* --- TELAS --- */
+.tela {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.tela.ativa {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- TELA 1: EDITOR --- */
+#tela-editor { display: none; }
+#tela-editor.ativa {
+    display: flex;
+    justify-content: center;
+    padding-top: 40px;
+}
+
+.input-card {
+    background: #fff;
+    width: 800px;
+    max-width: 100%;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.input-card h2 { color: #2c3e50; margin-bottom: 10px; }
+.input-card p { color: #666; margin-bottom: 25px; }
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.tab-btn {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    color: #888;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+}
+
+.tab-btn.ativa {
+    color: #007bff;
+    border-bottom-color: #007bff;
+}
+
+.tab-content { display: none; }
+.tab-content.ativa { display: block; }
+
+textarea {
+    width: 100%;
+    height: 350px;
+    padding: 20px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 15px;
+    line-height: 1.5;
+    resize: vertical;
+    background-color: #fcfcfc;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: #007bff;
+    background-color: #fff;
+}
+
+.upload-area {
+    border: 2px dashed #cbd5e0;
+    padding: 60px 20px;
+    text-align: center;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    transition: all 0.2s;
+}
+.upload-area:hover { border-color: #007bff; background-color: #eef6fc; }
+
+/* Botões */
+.btn-primario {
+    width: 100%;
+    padding: 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 25px;
+    transition: background 0.2s;
+}
+.btn-primario:hover { background-color: #0056b3; }
+.btn-primario:disabled { background-color: #ccc; cursor: not-allowed; }
+
+.btn-secundario {
+    padding: 10px 20px;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 10px;
+    font-weight: 500;
+}
+
+/* --- TELA 2: REVISÃO --- */
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    background: #fff;
+    padding: 15px 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.btn-voltar {
+    background: transparent;
+    border: 1px solid #ced4da;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    color: #555;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.btn-voltar:hover { background: #f8f9fa; color: #000; }
+
+.badge {
+    background-color: #e3f2fd;
+    color: #0d47a1;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.split-view {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+}
+
+.doc-viewer {
+    flex: 2;
+    min-width: 0;
+}
+
+.folha-papel {
+    background-color: #ffffff;
+    padding: 60px 80px;
+    min-height: 100vh;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 18px;
+    line-height: 1.8;
+    color: #000;
+    white-space: pre-wrap;
+    border-radius: 2px;
+}
+
+mark.erro-highlight {
+    background-color: #ffeb3b;
+    color: inherit;
+    border-bottom: none;
+    cursor: pointer;
+    padding: 2px 0;
+    border-radius: 2px;
+    transition: background 0.2s;
+}
+
+mark.erro-highlight:hover {
+    background-color: #fdd835;
+}
+
+mark.erro-highlight.focado {
+    background-color: #ff9800;
+    color: #fff;
+    box-shadow: 0 0 5px rgba(0,0,0,0.3);
+}
+
+/* --- PAINEL LATERAL --- */
+.painel-erros {
+    flex: 1;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 40px);
+    position: sticky;
+    top: 20px; 
+}
+
+.painel-erros h3 {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    background: #fafafa;
+    border-radius: 12px 12px 0 0;
+    color: #2c3e50;
+}
+
+#lista-erros-container {
+    padding: 15px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Títulos das Seções */
+.titulo-secao {
+    font-size: 0.85rem;
+    color: #888;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin: 20px 0 10px 0;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #eee;
+}
+
+.grupo-erros { margin-bottom: 20px; }
+
+/* Cards */
+.card-erro {
+    background-color: #fff;
+    border: 1px solid #eee;
+    border-left: 5px solid #ff4444;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 10px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card-erro:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+.card-titulo {
+    font-weight: 700;
+    color: #d32f2f;
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+}
+
+.card-msg {
+    font-size: 0.9rem;
+    color: #555;
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.btn-ir {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background-color: #fff3e0;
+    color: #e65100;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid #ffe0b2;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-ir:hover {
+    background-color: #ffe0b2;
+    color: #ef6c00;
+}

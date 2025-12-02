@@ -1,5 +1,7 @@
 import re 
 
+
+
 def auditar_cabecalho_condel(texto_completo):
     padrao_correto = "MINISTÉRIO DA INTEGRAÇÃO E DO DESENVOLVIMENTO REGIONAL"
     primeiras_linhas = texto_completo.strip().split('\n')
