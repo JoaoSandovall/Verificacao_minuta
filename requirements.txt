@@ -1,7 +1,6 @@
-streamlit
-python-docx
-PyPDF2
-pandas
 fastapi
 uvicorn
 pydantic
+python-docx
+PyPDF2
+pandas
