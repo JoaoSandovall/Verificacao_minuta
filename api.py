@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import re
 import html
-
 from core import obter_regras
 from core.regras.anexo import auditar_anexo
 from core.regras import comuns

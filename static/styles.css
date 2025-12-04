@@ -220,8 +220,9 @@ textarea:focus {
     border-radius: 2px;
 }
 
+/* --- DESTAQUE DE ERRO PADRONIZADO (AMARELO) --- */
 mark.erro-highlight {
-    background-color: #ffeb3b;
+    background-color: #ffeb3b; /* Amarelo Padrão */
     color: inherit;
     border-bottom: none;
     cursor: pointer;
@@ -234,10 +235,12 @@ mark.erro-highlight:hover {
     background-color: #fdd835;
 }
 
+/* Estado Focado (Vermelho Suave) */
 mark.erro-highlight.focado {
-    background-color: #ff9800;
+    background-color: #ef9a9a; /* Vermelho suave */
     color: #fff;
-    box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    box-shadow: 0 0 0 2px #e57373;
+    transition: background 0.3s;
 }
 
 /* --- PAINEL LATERAL --- */
@@ -316,18 +319,18 @@ mark.erro-highlight.focado {
     align-items: center;
     gap: 5px;
     padding: 6px 12px;
-    background-color: #fff3e0;
-    color: #e65100;
+    background-color: #ffebee; 
+    color: #c62828;
     border-radius: 4px;
     font-size: 0.8rem;
     font-weight: 600;
     text-decoration: none;
-    border: 1px solid #ffe0b2;
+    border: 1px solid #ffcdd2;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .btn-ir:hover {
-    background-color: #ffe0b2;
-    color: #ef6c00;
+    background-color: #ffcdd2;
+    color: #b71c1c;
 }
