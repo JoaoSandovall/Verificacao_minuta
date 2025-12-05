@@ -46,24 +46,25 @@ def auditar_sequencia_secoes_anexo(texto_completo):
     for i, bloco_texto in enumerate(blocos_capitulo[1:]):
         nome_capitulo = capitulos_encontrados[i] if i < len(capitulos_encontrados) else 'desconhecido'
         matches = re.finditer(r'^\s*Seção\s+([IVXLCDM]+)', bloco_texto, re.MULTILINE)
-        secoes = [match.group(1) for match in matches]
         
-        if not secoes:
-            continue
-
         expected_numeral = 1
-        for numeral_romano in secoes:
+        for match in matches:
+            numeral_romano = match.group(1)
+            texto_encontrado = match.group(0).strip() # Ex: "Seção VII"
+            
             current_numeral = _roman_to_int(numeral_romano)
             if current_numeral != expected_numeral:
-                erro = f"Sequência de Seções incorreta dentro do CAPÍTULO {nome_capitulo}. Esperado Seção de valor {expected_numeral} (Romano), mas encontrado '{numeral_romano}'."
-                erros.append(erro)
+                # RETORNA OBJETO PARA GRIFAR E CRIAR LINK
+                erros.append({
+                    "mensagem": f"Sequência incorreta no CAPÍTULO {nome_capitulo}. Esperado Seção {expected_numeral}, mas encontrado '{numeral_romano}'.",
+                    "original": texto_encontrado, 
+                    "tipo": "highlight"
+                })
                 expected_numeral = current_numeral
             expected_numeral += 1
             
-    if not erros:
-        return {"status": "OK", "detalhe": "A sequência das Seções (reiniciando por Capítulo) está correta."}
-    else:
-        return {"status": "FALHA", "detalhe": erros}
+    if not erros: return {"status": "OK", "detalhe": "Sequência das Seções correta."}
+    return {"status": "FALHA", "detalhe": erros}
 
 def auditar_sequencia_artigos_anexo(texto_completo):
     
@@ -91,7 +92,6 @@ def auditar_sequencia_artigos_anexo(texto_completo):
         return {"status": "FALHA", "detalhe": erros}
 
 def auditar_pontuacao_hierarquica_anexo(texto_completo):
-    
     erros = []
     
     padrao_itens = re.compile(
@@ -105,16 +105,14 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
         linha_completa = match.group(0).strip()
         marcador_item = match.group(1).strip()
         
+        # Pula títulos de seção/capítulo
         if re.match(r'^CAPÍTULO', linha_completa, re.I) or re.match(r'^Seção', linha_completa, re.I):
             continue
             
         tipo_atual = None
-        if re.match(r'Art\.|Parágrafo|§', marcador_item, re.I):
-            tipo_atual = "Artigo/Paragrafo"
-        elif re.match(r'^[IVXLCDM]+', marcador_item):
-            tipo_atual = "Inciso"
-        elif re.match(r'^[a-z]\)', marcador_item):
-            tipo_atual = "Alinea"
+        if re.match(r'Art\.|Parágrafo|§', marcador_item, re.I): tipo_atual = "Artigo/Paragrafo"
+        elif re.match(r'^[IVXLCDM]+', marcador_item): tipo_atual = "Inciso"
+        elif re.match(r'^[a-z]\)', marcador_item): tipo_atual = "Alinea"
 
         proximo_match = matches[i + 1] if (i + 1) < len(matches) else None
         
@@ -124,46 +122,41 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
             proximo_eh_inciso = bool(re.match(r'^[IVXLCDM]+', marcador_proximo))
             proximo_eh_alinea = bool(re.match(r'^[a-z]\)', marcador_proximo))
 
-            if tipo_atual == "Artigo/Paragrafo" and proximo_eh_inciso:
-                inicia_subdivisao = True
-            elif tipo_atual == "Inciso" and proximo_eh_alinea:
-                inicia_subdivisao = True
+            if tipo_atual == "Artigo/Paragrafo" and proximo_eh_inciso: inicia_subdivisao = True
+            elif tipo_atual == "Inciso" and proximo_eh_alinea: inicia_subdivisao = True
+        
+        # Checagens
+        msg_erro = None
         
         if inicia_subdivisao:
             if not linha_completa.endswith(':'):
-                erros.append(f"Pontuação de Abertura Incorreta: '{linha_completa}' deve terminar com ':' pois é seguido por uma subdivisão.")
-            continue
-            
-        if tipo_atual == "Artigo/Paragrafo":
-            # CORREÇÃO: Aceita Ponto Final (.) OU Dois-Pontos (:)
+                msg_erro = f"Pontuação de Abertura Incorreta: deve terminar com ':'."
+        elif tipo_atual == "Artigo/Paragrafo":
             if not (linha_completa.endswith('.') or linha_completa.endswith(':')):
-                erros.append(f"Pontuação de Declaração Incorreta: '{linha_completa}' deve terminar com '.' ou ':'.")
-            continue
-            
-        if tipo_atual in ("Inciso", "Alinea"):
+                msg_erro = f"Pontuação de Declaração Incorreta: deve terminar com '.' ou ':'."
+        elif tipo_atual in ("Inciso", "Alinea"):
             tipo_proximo = None
             if proximo_match:
-                marcador_proximo = proximo_match.group(1).strip()
-                if re.match(r'Art\.|Parágrafo|§', marcador_proximo, re.I):
-                    tipo_proximo = "Artigo/Paragrafo"
-                elif re.match(r'^[IVXLCDM]+', marcador_proximo):
-                    tipo_proximo = "Inciso"
-                elif re.match(r'^[a-z]\)', marcador_proximo):
-                    tipo_proximo = "Alinea"
+                m_prox = proximo_match.group(1).strip()
+                if re.match(r'Art\.|Parágrafo|§', m_prox, re.I): tipo_proximo = "Artigo/Paragrafo"
+                elif re.match(r'^[IVXLCDM]+', m_prox): tipo_proximo = "Inciso"
+                elif re.match(r'^[a-z]\)', m_prox): tipo_proximo = "Alinea"
             
-            # Se for item de lista (intermediário)
-            if (proximo_match and tipo_proximo == tipo_atual) or \
-               (tipo_atual == "Alinea" and tipo_proximo == "Inciso"):
-                # CORREÇÃO: Aceita também Dois-Pontos (:) caso introduza itens não mapeados
+            if (proximo_match and tipo_proximo == tipo_atual) or (tipo_atual == "Alinea" and tipo_proximo == "Inciso"):
                 if not (linha_completa.endswith(';') or linha_completa.endswith('; e') or linha_completa.endswith('; ou') or linha_completa.endswith(':')):
-                    erros.append(f"Pontuação de Lista Incorreta: '{linha_completa}' deve terminar com ';', '; e', '; ou' ou ':'.")
+                    msg_erro = f"Pontuação de Lista Incorreta: deve terminar com ';', '; e' ou '; ou'."
             else:
-                # Se for fim de lista
-                # CORREÇÃO: Aceita também Dois-Pontos (:)
                 if not (linha_completa.endswith('.') or linha_completa.endswith(':')):
-                    erros.append(f"Pontuação de Fim de Lista Incorreta: '{linha_completa}' deveria terminar com '.' (ponto final) ou ':'.")
+                    msg_erro = f"Pontuação de Fim de Lista Incorreta: deveria terminar com '.' (ponto final)."
 
-    if not erros:
-        return {"status": "OK", "detalhe": "A pontuação hierárquica do Anexo está correta."}
-    else:
-        return {"status": "FALHA", "detalhe": list(set(erros))[:5]}
+        if msg_erro:
+            # RETORNA OBJETO PARA GRIFAR E CRIAR LINK
+            # Usamos a linha completa como 'original' para grifar o parágrafo todo que está errado
+            erros.append({
+                "mensagem": f"{msg_erro} Trecho: '{linha_completa[:40]}...'",
+                "original": linha_completa,
+                "tipo": "highlight"
+            })
+
+    if not erros: return {"status": "OK", "detalhe": "Pontuação hierárquica correta."}
+    return {"status": "FALHA", "detalhe": list(set([e['mensagem'] for e in erros] if not isinstance(erros[0], dict) else erros))[:10]}

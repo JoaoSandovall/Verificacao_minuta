@@ -48,12 +48,6 @@ def auditar_epigrafe_ceg(texto_completo):
 
 def auditar_preambulo_ceg(texto_completo):
     
-    """
-    1. Autoridade: COORDENADOR...
-    2. Travessão obrigatório: '— CEG/MIDR'
-    3. Fecho: 'o Colegiado 'resolve'
-    """
-    
     erros = []
     
     # 1. Verifica Autoridade e Travessão

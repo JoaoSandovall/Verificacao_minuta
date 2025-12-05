@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import re
 import html
+
+# Importações do Core
 from core import obter_regras
 from core.regras.anexo import auditar_anexo
 from core.regras import comuns
@@ -29,9 +31,9 @@ def executar_auditoria(texto_para_auditar, regras_dict):
         try:
             resultado = funcao_auditoria(texto_para_auditar)
             if resultado["status"] == "FALHA":
+                # O detalhe pode ser uma lista de strings OU uma lista de dicionários
                 detalhes = resultado.get("detalhe", ["Erro genérico."])
-                if not isinstance(detalhes, list): detalhes = [str(detalhes)]
-                else: detalhes = [str(d) for d in detalhes]
+                if not isinstance(detalhes, list): detalhes = [detalhes]
                 resultados_falha.append((nome_regra, detalhes))
         except Exception as e:
             resultados_falha.append((nome_regra, [f"Erro interno: {e}"])) 
@@ -43,46 +45,75 @@ def gerar_html_anotado(texto_original, lista_erros_com_contexto):
     contador = 0
     
     for nome_regra, detalhes, contexto in lista_erros_com_contexto:
-        for msg in detalhes:
-            # CORREÇÃO: re.DOTALL permite pegar trechos com quebra de linha (\n)
-            match_trecho = re.search(r"Trecho: ['\"](.*?)['\"]", msg, re.DOTALL)
+        for item_erro in detalhes:
             
-            trecho_encontrado = None
-            snippet_cru = None
+            # --- LÓGICA DE LIMPEZA (AQUI ESTAVA O ERRO VISUAL) ---
+            msg_exibicao = ""
+            sugestao = None
+            original = None
+            
+            # Verifica se o erro é o novo formato (Dicionário) ou o antigo (String)
+            if isinstance(item_erro, dict):
+                # É um erro "inteligente" (com correção)
+                msg_exibicao = item_erro.get("mensagem", "")
+                sugestao = item_erro.get("sugestao")
+                original = item_erro.get("original")
+            else:
+                # É um erro simples (apenas texto)
+                msg_exibicao = str(item_erro)
 
+            # Tenta achar o trecho para grifar (Highlight)
+            # 1. Pela tag técnica "Trecho:"
+            match_trecho = re.search(r"Trecho: ['\"](.*?)['\"]", msg_exibicao, re.DOTALL)
+            
+            snippet_cru = None
             if match_trecho:
                 snippet_cru = match_trecho.group(1)
-                # Remove reticências se houver
+                # Remove o marcador técnico da mensagem que vai para a tela
+                msg_exibicao = msg_exibicao.replace(match_trecho.group(0), "").strip()
+            
+            # 2. Se não achou, tenta usar o 'original' do dicionário
+            if not snippet_cru and original:
+                snippet_cru = original
+
+            # Processa o highlight no HTML
+            trecho_encontrado = None
+            if snippet_cru:
                 snippet_busca = snippet_cru[:-3] if snippet_cru.endswith("...") else snippet_cru
                 snippet_html = html.escape(snippet_busca)
                 
-                # Busca no texto
+                # Verifica se existe no texto para poder grifar
                 if snippet_html in texto_html and len(snippet_html) > 2:
                     trecho_encontrado = snippet_html
 
-            # Limpa a mensagem para exibição (remove o trecho técnico)
-            trecho_remove = f"Trecho: '{snippet_cru}'" if snippet_cru else ""
-            msg_limpa = msg.replace(trecho_remove, "").strip()
-            
-            item_erro = {
+            # Monta o objeto final para o Frontend
+            obj_erro = {
                 "id": None,
                 "regra": nome_regra,
-                "mensagem": msg_limpa,
+                "mensagem": msg_exibicao, # Agora vai o texto limpo, sem { }
                 "contexto": contexto,
-                "tem_link": False
+                "tem_link": False,
+                "correcao": None
             }
+
+            if sugestao and original:
+                obj_erro["correcao"] = {
+                    "original": original,
+                    "novo": sugestao
+                }
 
             if trecho_encontrado:
                 contador += 1
                 id_tag = f"erro_{contador}"
-                item_erro["id"] = id_tag
-                item_erro["tem_link"] = True
+                obj_erro["id"] = id_tag
+                obj_erro["tem_link"] = True
                 
-                # Marca apenas a primeira ocorrência não marcada
+                # Adiciona a marcação amarela no texto
                 tag_mark = f'<mark id="{id_tag}" class="erro-highlight" title="{nome_regra}">{trecho_encontrado}</mark>'
+                # Substitui apenas a primeira ocorrência para não quebrar o HTML
                 texto_html = texto_html.replace(trecho_encontrado, tag_mark, 1)
             
-            erros_estruturados.append(item_erro)
+            erros_estruturados.append(obj_erro)
             
     return texto_html, erros_estruturados
 

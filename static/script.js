@@ -1,4 +1,4 @@
-const API_URL = "/auditar"; // Usa caminho relativo para evitar erro de CORS/Porta
+const API_URL = "/auditar";
 let modoArquivo = false;
 
 function abrirTab(tipo) {
@@ -17,7 +17,6 @@ function mostrarRevisao() {
 function voltarEditor() {
     document.getElementById('tela-revisao').classList.remove('ativa');
     document.getElementById('tela-editor').classList.add('ativa');
-    // Limpa tudo ao voltar
     document.getElementById('documento-renderizado').innerHTML = "";
     document.getElementById('erros-resolucao-lista').innerHTML = "";
     document.getElementById('erros-anexo-lista').innerHTML = "";
@@ -111,7 +110,6 @@ function renderizarResultado(data) {
         }
     });
 
-    // Só mostra os títulos se houver erros naquela seção
     if (temErroRes) grupoRes.style.display = "block";
     if (temErroAnx) grupoAnx.style.display = "block";
 }
