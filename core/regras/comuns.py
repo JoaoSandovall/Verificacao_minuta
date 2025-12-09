@@ -5,6 +5,13 @@ def _obter_contexto(texto, match):
     inicio = match.start()
     return texto[inicio : inicio+60] + "..."
 
+def _calcular_trecho_sujo(texto_completo, pos_inicio_match, pos_fim_match):
+    
+    resto = texto_completo[pos_fim_match:]
+    match_separador = re.match(r'^[\. \tº°ᵒ]*', resto)
+    tamanho_extra = len(match_separador.group(0)) if match_separador else 0
+    return texto_completo[pos_inicio_match : pos_fim_match + tamanho_extra]
+
 # --- REGRAS DE ESTRUTURA ---
 
 def auditar_numeracao_artigos(texto_completo):
@@ -16,55 +23,45 @@ def auditar_numeracao_artigos(texto_completo):
         pos_fim = match.end()
         contexto = _obter_contexto(texto_completo, match)
         
-        trecho_analisado = texto_completo[match.start() : pos_fim + 3]
+        # Calcula endereço exato
+        trecho_analisado = _calcular_trecho_sujo(texto_completo, match.start(), pos_fim)
         
-        # Pega 3 chars para analisar (símbolo + 2 espaços)
         trecho_pos = texto_completo[pos_fim : pos_fim + 3]
         if len(trecho_pos) < 3: trecho_pos = trecho_pos.ljust(3)
 
         msgs_erro = []
         correcao = None
 
-        # ARTIGOS 1 a 9 (Regra: 'ᵒ  ')
         if 1 <= numero <= 9:
             simbolo = trecho_pos[0]
             espacos = trecho_pos[1:]
-            
-            # 1. Avalia Símbolo
             if simbolo != 'ᵒ':
                 if simbolo in ['º', '°']: msgs_erro.append(f"símbolo incorreto ('{simbolo}', use 'ᵒ')")
                 elif simbolo == '.': msgs_erro.append("uso de ponto final (use 'ᵒ')")
-                else: msgs_erro.append(f"símbolo inválido ou ausente")
+                else: msgs_erro.append(f"símbolo inválido")
+            if espacos != '  ': msgs_erro.append("espaçamento incorreto (esperado 2)")
             
-            # 2. Avalia Espaços
-            if espacos != '  ':
-                msgs_erro.append("espaçamento incorreto (esperado 2 espaços)")
-
             if msgs_erro: correcao = f"Art. {numero}ᵒ  "
 
-        # ARTIGOS 10+ (Regra: '.  ')
         elif numero >= 10:
             simbolo = trecho_pos[0]
             espacos = trecho_pos[1:]
-
             if simbolo != '.':
                 if simbolo in ['º', '°', 'ᵒ']: msgs_erro.append("uso de ordinal (use ponto final)")
                 else: msgs_erro.append(f"pontuação incorreta ('{simbolo}')")
+            if espacos != '  ': msgs_erro.append("espaçamento incorreto (esperado 2)")
             
-            if espacos != '  ':
-                msgs_erro.append("espaçamento incorreto (esperado 2 espaços)")
-
             if msgs_erro: correcao = f"Art. {numero}.  "
         
         if msgs_erro:
-            # Junta os erros (ex: "Símbolo incorreto E espaçamento incorreto")
             texto_msg = " e ".join(msgs_erro)
-            texto_msg = texto_msg[0].upper() + texto_msg[1:] # Capitaliza
+            texto_msg = texto_msg[0].upper() + texto_msg[1:]
             
             erros.append({
                 "mensagem": f"No 'Art. {numero}': {texto_msg}. Trecho: '{contexto}'",
                 "original": trecho_analisado,
                 "sugestao": correcao,
+                "span": [match.start(), match.start() + len(trecho_analisado)], # Endereço
                 "tipo": "fixable"
             })
     
@@ -74,86 +71,58 @@ def auditar_numeracao_artigos(texto_completo):
 def auditar_espacamento_paragrafo(texto_completo):
     erros = []
     
-    # Parágrafos Numerados (§)
     matches = re.finditer(r'^\s*§\s+(\d+)', texto_completo, re.MULTILINE)
     for match in matches:
         numero = int(match.group(1))
         pos_fim = match.end()
         contexto = _obter_contexto(texto_completo, match)
         
-        trecho_analisado = texto_completo[match.start() : pos_fim + 3]
+        trecho_analisado = _calcular_trecho_sujo(texto_completo, match.start(), pos_fim)
+        
         trecho_pos = texto_completo[pos_fim : pos_fim + 3]
         if len(trecho_pos) < 3: trecho_pos = trecho_pos.ljust(3)
 
         msgs_erro = []
         correcao = None
 
-        # § 1 a 9 (Regra: 'ᵒ  ')
         if 1 <= numero <= 9:
-            simbolo = trecho_pos[0]
-            espacos = trecho_pos[1:]
+            if not trecho_pos.startswith("ᵒ  "):
+                msgs_erro.append(f"O '§ {numero}' deve ter 'ᵒ' e dois espaços")
+                correcao = f"§ {numero}ᵒ  "
 
-            # 1. Avalia Símbolo
-            if simbolo != 'ᵒ':
-                if simbolo in ['º', '°']: msgs_erro.append(f"símbolo incorreto ('{simbolo}', use 'ᵒ')")
-                elif simbolo == '.': msgs_erro.append("uso de ponto final (use 'ᵒ')")
-                else: msgs_erro.append(f"símbolo inválido ou ausente")
-
-            # 2. Avalia Espaços
-            if espacos != '  ':
-                msgs_erro.append("espaçamento incorreto (esperado 2 espaços)")
-
-            if msgs_erro: correcao = f"§ {numero}ᵒ  "
-
-        # § 10+ (Regra: '.  ')
         elif numero >= 10:
-            simbolo = trecho_pos[0]
-            espacos = trecho_pos[1:]
-
-            # 1. Avalia Ponto
-            if simbolo != '.':
-                if simbolo in ['º', '°', 'ᵒ']: msgs_erro.append("uso de ordinal (use ponto final)")
-                elif simbolo == ' ': msgs_erro.append("falta ponto final")
-                else: msgs_erro.append(f"símbolo incorreto ('{simbolo}')")
-
-            # 2. Avalia Espaços
-            if espacos != '  ':
-                msgs_erro.append("espaçamento incorreto (esperado 2 espaços)")
-            
-            if msgs_erro: correcao = f"§ {numero}.  "
+            if not trecho_pos.startswith(".  "):
+                msgs_erro.append(f"O '§ {numero}' deve ter ponto final e dois espaços")
+                correcao = f"§ {numero}.  "
 
         if msgs_erro:
-            texto_msg = " e ".join(msgs_erro)
-            texto_msg = texto_msg[0].upper() + texto_msg[1:]
-            
             erros.append({
-                "mensagem": f"No '§ {numero}': {texto_msg}. Trecho: '{contexto}'",
+                "mensagem": f"{msgs_erro[0]}. Trecho: '{contexto}'",
                 "original": trecho_analisado,
                 "sugestao": correcao,
+                "span": [match.start(), match.start() + len(trecho_analisado)],
                 "tipo": "fixable"
             })
 
-    # Parágrafo único (Regra: '  ')
     matches_unico = re.finditer(r'^\s*Parágrafo\s+único\.', texto_completo, re.MULTILINE)
     for match in matches_unico:
         pos_fim = match.end()
         contexto = _obter_contexto(texto_completo, match)
         
-        trecho_analisado = texto_completo[match.start() : pos_fim + 2]
+        trecho_analisado = _calcular_trecho_sujo(texto_completo, match.start(), pos_fim)
         
-        # Aqui não tem símbolo, só checa os 2 espaços
-        if not texto_completo[pos_fim : pos_fim + 2] == "  ":
+        trecho_check = texto_completo[pos_fim : pos_fim + 2]
+        if trecho_check != "  ":
             erros.append({
-                "mensagem": f"Após 'Parágrafo único.': Espaçamento incorreto (esperado 2 espaços). Trecho: '{contexto}'",
+                "mensagem": f"Após 'Parágrafo único.', deve haver dois espaços. Trecho: '{contexto}'",
                 "original": trecho_analisado,
                 "sugestao": "Parágrafo único.  ",
+                "span": [match.start(), match.start() + len(trecho_analisado)],
                 "tipo": "fixable"
             })
 
     if not erros: return {"status": "OK", "detalhe": "Parágrafos corretos."}
     return {"status": "FALHA", "detalhe": erros}
-
-# --- OUTRAS FUNÇÕES (MANTIDAS IGUAIS) ---
 
 def auditar_data_sem_zero_esquerda(texto_completo):
     erros = []

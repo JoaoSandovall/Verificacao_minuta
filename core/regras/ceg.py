@@ -17,16 +17,6 @@ def auditar_cabecalho_ceg(texto_completo):
 
 def auditar_epigrafe_ceg(texto_completo):
     
-    """
-    Verifica epígrafe CEG.
-    Aceita:
-    - RESOLUÇÃO CEG/MIDR
-    - MINUTA DE RESOLUÇÃO CEG/MIDR
-    - MINUTA RESOLUÇÃO CEG/MIDR
-    Exige: Nᵒ (bolinha especial) e datas no padrão.
-    """
-    
-    # 1. Verifica erros comuns de formatação (hífen ou espaço na sigla)
     if re.search(r"RESOLUÇÃO\s+CEG[- ]MIDR", texto_completo, re.IGNORECASE):
         return {"status": "FALHA", "detalhe": ["A epígrafe deve usar barra '/' (CEG/MIDR). Hífen ou espaço não são permitidos."]}
 
