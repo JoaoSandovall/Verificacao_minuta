@@ -5,30 +5,32 @@ from core.regras.anexo import auditar_anexo
 from core.regras import comuns
 
 def executar_auditoria(texto_para_auditar, regras_dict):
-    resultados_falha = []
+    resultados = []
     if not texto_para_auditar: return []
 
     for nome_regra, funcao_auditoria in regras_dict.items():
         if nome_regra == "Anexo (Identificação)": continue
         try:
             resultado = funcao_auditoria(texto_para_auditar)
-            if resultado["status"] == "FALHA":
+            status = resultado.get("status", "OK")
+            
+            if status in ["FALHA", "ALERTA"]:
                 detalhes = resultado.get("detalhe", ["Erro genérico."])
                 if not isinstance(detalhes, list): detalhes = [detalhes]
-                resultados_falha.append((nome_regra, detalhes))
+                resultados.append((nome_regra, detalhes, status))
+                
         except Exception as e:
-            resultados_falha.append((nome_regra, [f"Erro interno: {e}"])) 
-    return resultados_falha
+            resultados.append((nome_regra, [f"Erro interno: {e}"], "FALHA"))
+    return resultados
 
 def gerar_html_anotado(texto_original, lista_erros_com_contexto):
-    """Gera o HTML com as marcações (<mark>) e a lista estruturada de erros."""
     texto_html = html.escape(texto_original)
     erros_estruturados = []
     contador = 0
     
-    for nome_regra, detalhes, contexto in lista_erros_com_contexto:
+    # Agora desempacota 4 valores (incluindo status/nivel)
+    for nome_regra, detalhes, contexto, status in lista_erros_com_contexto:
         for item_erro in detalhes:
-            
             msg_exibicao = ""
             sugestao = None
             original = None
@@ -43,12 +45,10 @@ def gerar_html_anotado(texto_original, lista_erros_com_contexto):
                 msg_exibicao = str(item_erro)
 
             match_trecho = re.search(r"Trecho: ['\"](.*?)['\"]", msg_exibicao, re.DOTALL)
-            
             snippet_cru = None
             if match_trecho:
                 snippet_cru = match_trecho.group(1)
                 msg_exibicao = msg_exibicao.replace(match_trecho.group(0), "").strip()
-            
             if not snippet_cru and original:
                 snippet_cru = original
 
@@ -64,16 +64,13 @@ def gerar_html_anotado(texto_original, lista_erros_com_contexto):
                 "regra": nome_regra,
                 "mensagem": msg_exibicao,
                 "contexto": contexto,
+                "nivel": status,
                 "tem_link": False,
                 "correcao": None
             }
 
             if sugestao and original:
-                obj_erro["correcao"] = {
-                    "original": original,
-                    "novo": sugestao,
-                    "span": span
-                }
+                obj_erro["correcao"] = {"original": original, "novo": sugestao, "span": span}
 
             if trecho_encontrado:
                 contador += 1
@@ -88,25 +85,18 @@ def gerar_html_anotado(texto_original, lista_erros_com_contexto):
     return texto_html, erros_estruturados
 
 def processar_minuta(texto_bruto: str):
-    
-    # 1. Normalização de quebras de linha (CRUCIAL para manter sincronia com JS)
+    # 1. Normalização
     texto_completo = texto_bruto.replace('\r\n', '\n').replace('\r', '\n')
-    
-    if not texto_completo.strip():
-        return {"html": "", "erros": [], "tipo_documento": "N/A"}
+    if not texto_completo.strip(): return {"html": "", "erros": [], "tipo_documento": "N/A"}
 
-    # 2. Texto base para auditoria
+    # 2. Definições
     texto_limpo = texto_completo 
-    
-    # 3. Detecção de regras (versão sem cabeçalho para não confundir regex de identificação)
     texto_para_regras = re.sub(r'\*?\s*MINUTA DE DOCUMENTO', '', texto_completo, flags=re.IGNORECASE)
     regras_detectadas, tipo_doc = obter_regras(texto_para_regras)
     
-    # Separação das Regras
     regras_resolucao = {k: v for k, v in regras_detectadas.items() if not k.startswith("Anexo")}
     regras_anexo = {k: v for k, v in regras_detectadas.items() if k.startswith("Anexo") and k != "Anexo (Identificação)"}
     
-    # Injeta regras comuns no contexto do anexo
     regras_anexo.update({
         "Artigos (Formato)": comuns.auditar_numeracao_artigos,
         "Parágrafos (Espaçamento)": comuns.auditar_espacamento_paragrafo,
@@ -115,11 +105,10 @@ def processar_minuta(texto_bruto: str):
         "Alíneas (Pontuação)": comuns.auditar_pontuacao_alineas
     })
 
-    # 4. Divisão do Texto (SEM STRIP para não perder a contagem de índices)
+    # 3. Divisão do Texto
     texto_res = texto_limpo
     texto_anx = ""
     offset_anexo = 0
-    
     match_anexo = re.search(r'\n\s*ANEXO\s*$', texto_limpo, re.MULTILINE)
     
     if match_anexo:
@@ -129,27 +118,27 @@ def processar_minuta(texto_bruto: str):
 
     lista_final = []
 
-    # Audita a Resolução
+    # 4. Auditoria Resolução
     falhas_res = executar_auditoria(texto_res, regras_resolucao)
     
-    # Valida estrutura macro do Anexo
+    # 5. Auditoria da Estrutura do Anexo (captura FALHA ou ALERTA)
     res_anexo_id = auditar_anexo(texto_limpo)
-    if res_anexo_id["status"] == "FALHA":
-        falhas_res.append(("Estrutura do Anexo", res_anexo_id["detalhe"]))
+    if res_anexo_id["status"] in ["FALHA", "ALERTA"]:
+        falhas_res.append(("Estrutura do Anexo", res_anexo_id["detalhe"], res_anexo_id["status"]))
 
-    for nome, dets in falhas_res:
-        lista_final.append((nome, dets, "Resolução"))
+    for nome, dets, status in falhas_res:
+        lista_final.append((nome, dets, "Resolução", status))
 
-    # Audita o conteúdo do Anexo (com correção de offset)
     if texto_anx:
         falhas_anx = executar_auditoria(texto_anx, regras_anexo)
         
-        # Ajusta os índices somando o offset
         falhas_anx_ajustadas = []
-        for nome_regra, lista_detalhes in falhas_anx:
+        
+        for nome_regra, lista_detalhes, status in falhas_anx:
+            
             detalhes_corrigidos = []
+            
             for item in lista_detalhes:
-                # Se o erro tem coordenadas (span), somamos o offset do anexo
                 if isinstance(item, dict) and "span" in item:
                     novo_span = [item["span"][0] + offset_anexo, item["span"][1] + offset_anexo]
                     item_copia = item.copy()
@@ -157,16 +146,11 @@ def processar_minuta(texto_bruto: str):
                     detalhes_corrigidos.append(item_copia)
                 else:
                     detalhes_corrigidos.append(item)
-            falhas_anx_ajustadas.append((nome_regra, detalhes_corrigidos))
+            falhas_anx_ajustadas.append((nome_regra, detalhes_corrigidos, status))
 
-        for nome, dets in falhas_anx_ajustadas:
-            lista_final.append((nome, dets, "Anexo"))
+        for nome, dets, status in falhas_anx_ajustadas:
+            lista_final.append((nome, dets, "Anexo", status))
 
-    # Gera HTML final
     html_final, lista_erros = gerar_html_anotado(texto_limpo, lista_final)
 
-    return {
-        "tipo_documento": tipo_doc,
-        "html": html_final,
-        "erros": lista_erros
-    }
+    return {"tipo_documento": tipo_doc, "html": html_final, "erros": lista_erros}

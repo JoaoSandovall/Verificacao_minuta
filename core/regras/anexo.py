@@ -3,14 +3,24 @@ from core.utils import _roman_to_int
 
 def auditar_anexo(texto_completo):
     match_correto = re.search(r'\n\s*(ANEXO)\s*(?=\n|$)', texto_completo)
+    
     if match_correto:
          return {"status": "OK", "detalhe": "Seção 'ANEXO' encontrada e formatada corretamente."}
+     
     match_incorreto = re.search(r'\n\s*(ANEXO\b.*?)\s*(?=\n|$)', texto_completo, re.IGNORECASE)
+    
     if match_incorreto:
         palavra_encontrada = match_incorreto.group(1).strip()
-        return {"status": "FALHA", "detalhe": [f"Formato de 'Anexo' incorreto. Encontrado: '{palavra_encontrada}'. Esperado: 'ANEXO' (exatamente, em maiúsculas e sozinho na linha)."]}
-    return {"status": "OK", "detalhe": "Aviso: Nenhuma seção 'ANEXO' foi encontrada (Não obrigatório)."}
-
+        return {
+                "status": "FALHA",
+                "detalhe": [f"Separador de Anexo incorreto. Encontrado: '{palavra_encontrada}'. O sistema exige a palavra 'ANEXO' (exatamente assim: tudo maiúsculo e sozinha na linha) para separar a resolução do conteúdo do anexo."]
+        }
+        
+    return {
+        "status": "ALERTA",
+        "detalhe": [f"O termo 'ANEXO' não foi encontrado no final do documento. Se esta resolução possui anexo, insira o título 'ANEXO' para habilitar a auditoria específica. Se não possui, ignore este aviso."]
+    }
+    
 def auditar_sequencia_capitulos_anexo(texto_completo):
     erros = []
     matches = re.finditer(r'^\s*CAPÍTULO\s+([IVXLCDM]+)', texto_completo, re.MULTILINE)

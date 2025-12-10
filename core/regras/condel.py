@@ -33,29 +33,52 @@ def auditar_preambulo_condel(texto_completo):
         "COARIDE": "O PRESIDENTE DO CONSELHO ADMINISTRATIVO DA REGIÃO INTEGRADA DE DESENVOLVIMENTO DO DISTRITO FEDERAL E ENTORNO — COARIDE"
     }
 
-    autoridade_correta_encontrada = False
-    for auth_texto in autoridades_map.values():
-        if auth_texto in texto_completo:
-            autoridade_correta_encontrada = True
+    # 1. Tenta identificar qual sigla está sendo usada no texto para validar a autoridade
+    sigla_encontrada = None
+    for sigla in autoridades_map.keys():
+        if sigla in texto_completo.upper():
+            sigla_encontrada = sigla
             break
             
-    if not autoridade_correta_encontrada:
-        sugestao_focada = None
-        sigla_detectada = ""
-        for sigla, auth_texto in autoridades_map.items():
-            if sigla in texto_completo.upper():
-                sugestao_focada = auth_texto
-                sigla_detectada = sigla
-                break
+    # Procura a linha que parece ser a autoridade (começa com "O PRESIDENTE...")
+    # Capturamos de forma "frouxa" para pegar o erro e grifar
+    match_linha_autoridade = re.search(r"(O PRESIDENTE DO CONSELHO.*?)(?:,|$|\n)", texto_completo, re.IGNORECASE)
+
+    if match_linha_autoridade:
+        texto_encontrado = match_linha_autoridade.group(1).strip()
         
-        if sugestao_focada:
-            erros.append(f"Autoridade incorreta detectada para <strong>{sigla_detectada}</strong>.<br><br>O texto correto deve ser exato:<br><em>'{sugestao_focada}'</em>")
+        if sigla_encontrada:
+            texto_esperado = autoridades_map[sigla_encontrada]
+            
+            # Normaliza para comparação (remove espaços extras)
+            if " ".join(texto_encontrado.split()) != " ".join(texto_esperado.split()):
+                erros.append({
+                    "mensagem": f"Autoridade incorreta para {sigla_encontrada}.<br>Esperado: <em>'{texto_esperado}'</em>",
+                    "original": texto_encontrado, 
+                    "tipo": "highlight"
+                })
         else:
-            lista_opcoes = "<br><br>".join([f"• {txt}" for txt in autoridades_map.values()])
-            erros.append(f"Autoridade não identificada. Utilize uma das opções padrão:<br><div style='font-size:0.85em; margin-top:5px'>{lista_opcoes}</div>")
-    
-    if "resolve:" not in texto_completo:
-        erros.append("Fecho incorreto. Esperado: 'resolve:'.")
+            erros.append({
+                "mensagem": "Autoridade identificada mas sigla (SUDECO/SUDAM/ETC) não reconhecida no contexto.",
+                "original": texto_encontrado,
+                "tipo": "highlight"
+            })
+    else:
+        erros.append("Linha de autoridade ('O PRESIDENTE DO CONSELHO...') não encontrada no preâmbulo.")
+        
+    match_resolve = re.search(r"\b(RESOLVE:)\s*", texto_completo)
+    match_resolve_correto = re.search(r"\b(resolve:)\s*", texto_completo)
+
+    if match_resolve:
+        erros.append({
+            "mensagem": "O fecho deve ser em letras minúsculas: 'resolve:'.",
+            "original": match_resolve.group(1),
+            "sugestao": "resolve:",
+            "span": [match_resolve.start(), match_resolve.end()],
+            "tipo": "fixable"
+        })
+    elif not match_resolve_correto:
+        erros.append("Fecho 'resolve:' não encontrado após o preâmbulo.")
 
     if erros:
         return {"status": "FALHA", "detalhe": erros}

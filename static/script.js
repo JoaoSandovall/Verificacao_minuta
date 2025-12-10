@@ -101,6 +101,10 @@ function renderizarResultado(data) {
         const card = document.createElement('div');
         card.className = 'card-erro';
         
+        if (erro.nivel === 'ALERTA') {
+            card.classList.add('alerta');
+        }
+        
         let botoesHtml = "";
         if (erro.tem_link) {
             botoesHtml += `<div class="btn-ir" onclick="rolarParaErro('${erro.id}')">🎯 Ver</div>`;

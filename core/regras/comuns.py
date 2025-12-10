@@ -131,7 +131,11 @@ def auditar_data_sem_zero_esquerda(texto_completo):
     for match in re.finditer(padrao, texto_completo):
         dia, mes, _ = match.groups()
         if mes.lower() in meses and len(dia) == 2 and dia.startswith('0'):
-            erros.append(f"Data com zero à esquerda: '{match.group(0)}'.")
+            erros.append({
+                "mensagem": f"Data com zero à esquerda: '{match.group(0)}'. Deve ser '{int(dia)} de {mes}...'",
+                "original": match.group(0),
+                "tipo": "highlight"
+            })
     if not erros: return {"status": "OK", "detalhe": "Datas corretas."}
     return {"status": "FALHA", "detalhe": erros}
 
