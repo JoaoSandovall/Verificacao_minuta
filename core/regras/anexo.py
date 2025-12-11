@@ -61,14 +61,20 @@ def auditar_sequencia_secoes_anexo(texto_completo):
     return {"status": "FALHA", "detalhe": erros}
 
 def auditar_sequencia_artigos_anexo(texto_completo):
+    
     erros = []
+    
     matches = re.finditer(r'Art\.\s*(\d+)', texto_completo)
     artigos = [int(match.group(1)) for match in matches]
+    
     if not artigos: return {"status": "OK", "detalhe": "Nenhum Artigo encontrado no Anexo para análise de sequência."}
+    
     expected_num = 1
-    if artigos[0] != 1:
+    
+    if artigos[0] != 1:    
         erros.append(f"O primeiro Artigo do Anexo não é 'Art. 1ᵒ'. Encontrado: 'Art. {artigos[0]}'.")
         expected_num = artigos[0]
+        
     for num in artigos:
         if num != expected_num:
             erros.append(f"Sequência de Artigos incorreta no Anexo. Esperado 'Art. {expected_num}', mas encontrado 'Art. {num}'.")
@@ -78,7 +84,9 @@ def auditar_sequencia_artigos_anexo(texto_completo):
     return {"status": "FALHA", "detalhe": erros}
 
 def auditar_pontuacao_hierarquica_anexo(texto_completo):
+    
     erros = []
+    
     padrao_itens = re.compile(r"^(?:[ \t]*)((Art\.\s*\d+[ᵒ\.]?|Parágrafo\s+único\.?|§\s*\d+[ᵒ\.]?)|([IVXLCDM]+[\s\-–—])|([a-z]\)))(.*)", re.MULTILINE | re.IGNORECASE)
     matches = list(re.finditer(padrao_itens, texto_completo))
     
@@ -107,21 +115,9 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
             if not linha_completa.endswith(':'): msg_erro = "Pontuação de Abertura Incorreta: deve terminar com ':'."
         elif tipo_atual == "Artigo/Paragrafo":
             if not (linha_completa.endswith('.') or linha_completa.endswith(':')): msg_erro = "Pontuação de Declaração Incorreta: deve terminar com '.' ou ':'."
-        elif tipo_atual in ("Inciso", "Alinea"):
-            tipo_proximo = None
-            if proximo_match:
-                m_prox = proximo_match.group(1).strip()
-                if re.match(r'Art\.|Parágrafo|§', m_prox, re.I): tipo_proximo = "Artigo/Paragrafo"
-                elif re.match(r'^[IVXLCDM]+', m_prox): tipo_proximo = "Inciso"
-                elif re.match(r'^[a-z]\)', m_prox): tipo_proximo = "Alinea"
-            if (proximo_match and tipo_proximo == tipo_atual) or (tipo_atual == "Alinea" and tipo_proximo == "Inciso"):
-                if not (linha_completa.endswith(';') or linha_completa.endswith('; e') or linha_completa.endswith('; ou') or linha_completa.endswith(':')):
-                    msg_erro = "Pontuação de Lista Incorreta: deve terminar com ';', '; e' ou '; ou'."
-            else:
-                if not (linha_completa.endswith('.') or linha_completa.endswith(':')):
-                    msg_erro = "Pontuação de Fim de Lista Incorreta: deveria terminar com '.' (ponto final)."
-
+        
         if msg_erro:
+            
             erros.append({
                 "mensagem": f"{msg_erro} Trecho: '{linha_completa[:40]}...'",
                 "original": linha_completa,

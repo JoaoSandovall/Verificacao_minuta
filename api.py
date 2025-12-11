@@ -22,4 +22,3 @@ async def auditar_minuta(dados: MinutaInput):
     return resultado
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
-    

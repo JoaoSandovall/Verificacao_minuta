@@ -186,13 +186,19 @@ def auditar_pontuacao_incisos(texto_completo):
         numeral = re.match(r'^\s*([IVXLCDM]+)', texto).group(1)
         val = _roman_to_int(numeral)
         trecho_contexto = texto[:60] + "..."
+        
         if val != 1 and i > 0:
             prev = matches[i-1].group(1).strip()
             prev_rom = re.match(r'^\s*([IVXLCDM]+)', prev).group(1)
             prev_val = _roman_to_int(prev_rom)
             gap = texto_completo[matches[i-1].end():match.start()]
             if not re.search(r'(Art\.|§|CAPÍTULO|Seção|Parágrafo)', gap) and val != prev_val + 1:
-                 erros.append(f"Sequência incorreta. Esperado {prev_val + 1}, achou '{numeral}'. Trecho: '{trecho_contexto}'")
+                 erros.append({
+                    "mensagem": f"Sequência incorreta. Esperado {prev_val + 1}, achou '{numeral}'. Trecho: '{trecho_contexto}'",
+                    "original": texto,
+                    "tipo": "highlight"
+                 })
+
         pos_fim = match.end()
         prox = texto_completo[pos_fim:pos_fim+200].lstrip()
         is_last = True
@@ -201,10 +207,18 @@ def auditar_pontuacao_incisos(texto_completo):
         if texto.endswith(':'): continue
         if is_last:
             if not texto.endswith('.'):
-                erros.append(f"Último inciso ({numeral}) sem ponto final. Trecho: '{trecho_contexto}'")
+                erros.append({
+                    "mensagem": f"Último inciso ({numeral}) sem ponto final. Trecho: '{trecho_contexto}'",
+                    "original": texto,
+                    "tipo": "highlight"
+                })
         else:
             if not (texto.endswith(';') or texto.endswith('; e') or texto.endswith('; ou')):
-                erros.append(f"Inciso intermediário ({numeral}) deve ter ponto e vírgula. Trecho: '{trecho_contexto}'")
+                erros.append({
+                    "mensagem": f"Inciso intermediário ({numeral}) deve ter ponto e vírgula. Trecho: '{trecho_contexto}'",
+                    "original": texto,
+                    "tipo": "highlight"
+                })
     if not erros: return {"status": "OK", "detalhe": "Pontuação incisos correta."}
     return {"status": "FALHA", "detalhe": erros[:50]}
 
@@ -222,7 +236,11 @@ def auditar_pontuacao_alineas(texto_completo):
             prev = matches[i-1].group(1).strip()
             gap = texto_completo[matches[i-1].end():match.start()]
             if not re.search(r'(Art\.|§|[IVXLCDM])', gap) and ord_letra != ord(prev[0]) + 1:
-                 erros.append(f"Sequência alíneas incorreta. Achou '{letra})'. Trecho: '{trecho_contexto}'")
+                 erros.append({
+                    "mensagem": f"Sequência alíneas incorreta. Achou '{letra})'. Trecho: '{trecho_contexto}'",
+                    "original": texto,
+                    "tipo": "highlight"
+                 })
         pos_fim = match.end()
         prox = texto_completo[pos_fim:pos_fim+200].lstrip()
         is_final = False
@@ -233,9 +251,17 @@ def auditar_pontuacao_alineas(texto_completo):
         else: is_final = True
         if is_final:
             if not texto.endswith('.'):
-                erros.append(f"Última alínea ('{letra})') sem ponto final. Trecho: '{trecho_contexto}'")
+                erros.append({
+                    "mensagem": f"Última alínea ('{letra})') sem ponto final. Trecho: '{trecho_contexto}'",
+                    "original": texto,
+                    "tipo": "highlight"
+                })
         elif is_middle:
             if not (texto.endswith(';') or texto.endswith('; e') or texto.endswith('; ou')):
-                 erros.append(f"Alínea intermediária ('{letra})') deve ter ponto e vírgula. Trecho: '{trecho_contexto}'")
+                 erros.append({
+                    "mensagem": f"Alínea intermediária ('{letra})') deve ter ponto e vírgula. Trecho: '{trecho_contexto}'",
+                    "original": texto,
+                    "tipo": "highlight"
+                 })
     if not erros: return {"status": "OK", "detalhe": "Alíneas corretas."}
     return {"status": "FALHA", "detalhe": erros[:50]}

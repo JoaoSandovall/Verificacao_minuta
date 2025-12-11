@@ -27,21 +27,19 @@ def auditar_preambulo_condel(texto_completo):
     erros = []
     
     autoridades_map = {
-        "SUDECO": "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DO CENTRO-OESTE — CONDEL/SUDECO",
-        "SUDAM": "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DA AMAZÔNIA — CONDEL/SUDAM",
-        "SUDENE": "O PRESIDENTE DO CONSELHO DELIBERATIVO DA SUPERINTENDÊNCIA DO DESENVOLVIMENTO DO NORDESTE — CONDEL/SUDENE",
+        "SUDECO": "O PRESIDENTE DO CONSELHO DELIBERATIVO DO DESENVOLVIMENTO DO CENTRO-OESTE — CONDEL/SUDECO",
+        "SUDAM": "O PRESIDENTE DO CONSELHO DELIBERATIVO DO DESENVOLVIMENTO DA AMAZÔNIA — CONDEL/SUDAM",
+        "SUDENE": "O PRESIDENTE DO CONSELHO DELIBERATIVO DO DESENVOLVIMENTO DO NORDESTE — CONDEL/SUDENE",
         "COARIDE": "O PRESIDENTE DO CONSELHO ADMINISTRATIVO DA REGIÃO INTEGRADA DE DESENVOLVIMENTO DO DISTRITO FEDERAL E ENTORNO — COARIDE"
     }
-
-    # 1. Tenta identificar qual sigla está sendo usada no texto para validar a autoridade
+    
     sigla_encontrada = None
+    
     for sigla in autoridades_map.keys():
         if sigla in texto_completo.upper():
             sigla_encontrada = sigla
             break
-            
-    # Procura a linha que parece ser a autoridade (começa com "O PRESIDENTE...")
-    # Capturamos de forma "frouxa" para pegar o erro e grifar
+        
     match_linha_autoridade = re.search(r"(O PRESIDENTE DO CONSELHO.*?)(?:,|$|\n)", texto_completo, re.IGNORECASE)
 
     if match_linha_autoridade:
@@ -77,6 +75,7 @@ def auditar_preambulo_condel(texto_completo):
             "span": [match_resolve.start(), match_resolve.end()],
             "tipo": "fixable"
         })
+        
     elif not match_resolve_correto:
         erros.append("Fecho 'resolve:' não encontrado após o preâmbulo.")
 
