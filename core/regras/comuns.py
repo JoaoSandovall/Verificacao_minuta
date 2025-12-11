@@ -86,18 +86,40 @@ def auditar_espacamento_paragrafo(texto_completo):
         correcao = None
 
         if 1 <= numero <= 9:
-            if not trecho_pos.startswith("ᵒ  "):
-                msgs_erro.append(f"O '§ {numero}' deve ter 'ᵒ' e dois espaços")
+            simbolo = trecho_pos[0]
+            espacos = trecho_pos[1:]
+            
+            if simbolo != 'ᵒ':
+                if simbolo in ['º', '°']: msgs_erro.append(f"símbolo incorreto ('{simbolo}', use 'ᵒ')")
+                elif simbolo == '.': msgs_erro.append("uso de ponto final (use 'ᵒ')")
+                else: msgs_erro.append(f"símbolo inválido ('{simbolo}')")
+            
+            if espacos != '  ':
+                msgs_erro.append("espaçamento incorreto (esperado 2)")
+                
+            if msgs_erro:
                 correcao = f"§ {numero}ᵒ  "
 
         elif numero >= 10:
-            if not trecho_pos.startswith(".  "):
-                msgs_erro.append(f"O '§ {numero}' deve ter ponto final e dois espaços")
+            simbolo = trecho_pos[0]
+            espacos = trecho_pos[1:]
+            
+            if simbolo != '.':
+                if simbolo in ['º', '°', 'ᵒ']: msgs_erro.append("uso de ordinal (use ponto final)")
+                else: msgs_erro.append(f"pontuação incorreta ('{simbolo}')")
+            
+            if espacos != '  ':
+                msgs_erro.append("espaçamento incorreto (esperado 2)")
+
+            if msgs_erro:
                 correcao = f"§ {numero}.  "
 
         if msgs_erro:
+            texto_msg = " e ".join(msgs_erro)
+            texto_msg = texto_msg[0].upper() + texto_msg[1:]
+            
             erros.append({
-                "mensagem": f"{msgs_erro[0]}. Trecho: '{contexto}'",
+                "mensagem": f"No '§ {numero}': {texto_msg}. Trecho: '{contexto}'",
                 "original": trecho_analisado,
                 "sugestao": correcao,
                 "span": [match.start(), match.start() + len(trecho_analisado)],
@@ -185,7 +207,7 @@ def auditar_pontuacao_incisos(texto_completo):
         texto = match.group(1).strip()
         numeral = re.match(r'^\s*([IVXLCDM]+)', texto).group(1)
         val = _roman_to_int(numeral)
-        trecho_contexto = texto[:60] + "..."
+        trecho_contexto = texto[:60] + "..." 
         
         if val != 1 and i > 0:
             prev = matches[i-1].group(1).strip()
@@ -219,6 +241,7 @@ def auditar_pontuacao_incisos(texto_completo):
                     "original": texto,
                     "tipo": "highlight"
                 })
+    
     if not erros: return {"status": "OK", "detalhe": "Pontuação incisos correta."}
     return {"status": "FALHA", "detalhe": erros[:50]}
 
@@ -230,7 +253,7 @@ def auditar_pontuacao_alineas(texto_completo):
     for i, match in enumerate(matches):
         texto = match.group(1).strip()
         letra = texto[0]
-        trecho_contexto = texto[:60] + "..."
+        trecho_contexto = texto[:60] + "..." 
         ord_letra = ord(letra)
         if letra != 'a' and i > 0:
             prev = matches[i-1].group(1).strip()
