@@ -16,10 +16,12 @@ def _calcular_trecho_sujo(texto_completo, pos_inicio_match, pos_fim_match):
 
 def auditar_numeracao_artigos(texto_completo):
     erros = []
-    matches = re.finditer(r'^\s*Art\.\s*(\d+)', texto_completo, re.MULTILINE)
+    # Alterado para capturar a indentação (grupo 1) e o número (grupo 2)
+    matches = re.finditer(r'^(\s*)Art\.\s*(\d+)', texto_completo, re.MULTILINE)
     
     for match in matches:
-        numero = int(match.group(1))
+        indentacao = match.group(1) # Captura espaços/tabs antes do Art.
+        numero = int(match.group(2))
         pos_fim = match.end()
         contexto = _obter_contexto(texto_completo, match)
         
@@ -41,7 +43,9 @@ def auditar_numeracao_artigos(texto_completo):
                 else: msgs_erro.append(f"símbolo inválido")
             if espacos != '  ': msgs_erro.append("espaçamento incorreto (esperado 2)")
             
-            if msgs_erro: correcao = f"Art. {numero}ᵒ  "
+            if msgs_erro: 
+                # Preserva a indentação original na correção
+                correcao = f"{indentacao}Art. {numero}ᵒ  "
 
         elif numero >= 10:
             simbolo = trecho_pos[0]
@@ -51,7 +55,9 @@ def auditar_numeracao_artigos(texto_completo):
                 else: msgs_erro.append(f"pontuação incorreta ('{simbolo}')")
             if espacos != '  ': msgs_erro.append("espaçamento incorreto (esperado 2)")
             
-            if msgs_erro: correcao = f"Art. {numero}.  "
+            if msgs_erro: 
+                # Preserva a indentação original na correção
+                correcao = f"{indentacao}Art. {numero}.  "
         
         if msgs_erro:
             texto_msg = " e ".join(msgs_erro)
@@ -71,9 +77,11 @@ def auditar_numeracao_artigos(texto_completo):
 def auditar_espacamento_paragrafo(texto_completo):
     erros = []
     
-    matches = re.finditer(r'^\s*§\s+(\d+)', texto_completo, re.MULTILINE)
+    # Alterado para capturar a indentação (grupo 1)
+    matches = re.finditer(r'^(\s*)§\s+(\d+)', texto_completo, re.MULTILINE)
     for match in matches:
-        numero = int(match.group(1))
+        indentacao = match.group(1)
+        numero = int(match.group(2))
         pos_fim = match.end()
         contexto = _obter_contexto(texto_completo, match)
         
@@ -85,6 +93,7 @@ def auditar_espacamento_paragrafo(texto_completo):
         msgs_erro = []
         correcao = None
 
+        # Lógica para § 1 a § 9
         if 1 <= numero <= 9:
             simbolo = trecho_pos[0]
             espacos = trecho_pos[1:]
@@ -98,8 +107,9 @@ def auditar_espacamento_paragrafo(texto_completo):
                 msgs_erro.append("espaçamento incorreto (esperado 2)")
                 
             if msgs_erro:
-                correcao = f"§ {numero}ᵒ  "
+                correcao = f"{indentacao}§ {numero}ᵒ  "
 
+        # Lógica para § 10 em diante
         elif numero >= 10:
             simbolo = trecho_pos[0]
             espacos = trecho_pos[1:]
@@ -112,7 +122,7 @@ def auditar_espacamento_paragrafo(texto_completo):
                 msgs_erro.append("espaçamento incorreto (esperado 2)")
 
             if msgs_erro:
-                correcao = f"§ {numero}.  "
+                correcao = f"{indentacao}§ {numero}.  "
 
         if msgs_erro:
             texto_msg = " e ".join(msgs_erro)
@@ -126,8 +136,10 @@ def auditar_espacamento_paragrafo(texto_completo):
                 "tipo": "fixable"
             })
 
-    matches_unico = re.finditer(r'^\s*Parágrafo\s+único\.', texto_completo, re.MULTILINE)
+    # Alterado para capturar a indentação no Parágrafo único também
+    matches_unico = re.finditer(r'^(\s*)Parágrafo\s+único\.', texto_completo, re.MULTILINE)
     for match in matches_unico:
+        indentacao = match.group(1)
         pos_fim = match.end()
         contexto = _obter_contexto(texto_completo, match)
         
@@ -138,7 +150,7 @@ def auditar_espacamento_paragrafo(texto_completo):
             erros.append({
                 "mensagem": f"Após 'Parágrafo único.', deve haver dois espaços. Trecho: '{contexto}'",
                 "original": trecho_analisado,
-                "sugestao": "Parágrafo único.  ",
+                "sugestao": f"{indentacao}Parágrafo único.  ",
                 "span": [match.start(), match.start() + len(trecho_analisado)],
                 "tipo": "fixable"
             })
