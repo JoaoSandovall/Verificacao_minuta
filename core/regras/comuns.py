@@ -14,9 +14,11 @@ def _calcular_trecho_sujo(texto_completo, pos_inicio_match, pos_fim_match):
 # --- REGRAS DE ESTRUTURA ---
 
 def auditar_cabecalho(texto_completo):
+    
     """Aceita Ministério com ou sem '/Secretaria Executiva'."""
     padrao_base = "MINISTÉRIO DA INTEGRAÇÃO E DO DESENVOLVIMENTO REGIONAL"
     primeiras_linhas = texto_completo.strip().split('\n')
+    
     if not primeiras_linhas:
         return {"status": "FALHA", "detalhe": ["Documento vazio."]}
     
@@ -29,7 +31,9 @@ def auditar_cabecalho(texto_completo):
     return {"status": "FALHA", "detalhe": [f"Cabeçalho deve ser '{padrao_base}' (opcional: /Secretaria Executiva). Encontrado: '{linha1}'"]}
 
 def verificar_fecho_preambulo(texto_completo):
+   
     erros = []
+    
     # Procura por 'resolve:' ou 'resolveu:' capturando se tem 'o Colegiado' antes
     match_fecho = re.search(r"(o\s+Colegiado\s+)?(resolveu?)\s*:", texto_completo, re.IGNORECASE)
 
@@ -57,6 +61,7 @@ def verificar_fecho_preambulo(texto_completo):
                 "span": match_fecho.span(),
                 "tipo": "fixable"
             })
+            
     else:
         # Caso 3: Não achou nem 'resolve:' nem 'resolveu:'
         erros.append({
@@ -210,13 +215,30 @@ def auditar_uso_siglas(texto_completo):
     return {"status": "FALHA", "detalhe": erros}
 
 def auditar_ementa(texto_completo):
+   
     match = re.search(r".* DE \d{4}\s*\n+(?:[ \t]*\*\s*MINUTA DE DOCUMENTO.*?\n+)?(.*)", texto_completo, re.MULTILINE)
+    
     if match:
         texto = match.group(1).strip()
         verbo = texto.split()[0]
-        aceitos = ["Aprova", "Altera", "Dispõe", "Regulamenta", "Define", "Estabelece", "Autoriza", "Prorroga", "Revoga", "Atualização"]
+        
+        aceitos = [
+            "Aprova", 
+            "Altera", 
+            "Dispõe", 
+            "Regulamenta", 
+            "Define", 
+            "Estabelece", 
+            "Autoriza", 
+            "Prorroga", 
+            "Revoga", 
+            "Atualização", 
+            "Institui"
+        ]
+        
         if verbo not in aceitos:
              return {"status": "FALHA", "detalhe": [f"Verbo incorreto: '{verbo}'. Trecho: '{texto[:30]}...'"]}
+         
     return {"status": "OK", "detalhe": "Ementa correta."}
 
 def auditar_assinatura(texto_completo):
@@ -230,9 +252,12 @@ def auditar_assinatura(texto_completo):
     return {"status": "OK", "detalhe": "Assinatura correta."}
 
 def auditar_fecho_vigencia(texto_completo):
+    
     if "Esta Resolução entra em vigor" not in texto_completo:
          return {"status": "FALHA", "detalhe": ["Cláusula de vigência não encontrada."]}
+     
     busca_errada = re.search(r"entra\s+em\s+vigor\s+em\s+\d{1,2}[º°]\s+de", texto_completo)
+    
     if busca_errada:
         return {"status": "FALHA", "detalhe": [f"Ordinal incorreto na vigência. Use 'ᵒ'. Trecho: '{busca_errada.group(0)}'"]}
     return {"status": "OK", "detalhe": "Vigência encontrada."}

@@ -44,6 +44,7 @@ def obter_regras(texto_completo):
         regras["Preâmbulo (CEG)"] = ceg.auditar_preambulo_ceg
         
     elif tipo == "CONDEL":
+        regras["Cabeçalho (MINISTÉRIO/CONSELHO)"] = condel.auditar_cabecalho_condel
         regras["Epígrafe (CONDEL)"] = condel.auditar_epigrafe_condel
         regras["Preâmbulo (CONDEL)"] = condel.auditar_preambulo_condel
         

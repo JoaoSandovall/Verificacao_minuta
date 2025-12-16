@@ -1,7 +1,5 @@
 import re
-from core.regras.comuns import verificar_fecho_preambulo  # <--- IMPORTANTE
-
-# A função auditar_cabecalho_ceg foi removida daqui pois agora está em comuns.py
+from core.regras.comuns import verificar_fecho_preambulo
 
 def auditar_epigrafe_ceg(texto_completo):
     if re.search(r"RESOLUÇÃO\s+CEG[- ]MIDR", texto_completo, re.IGNORECASE):
