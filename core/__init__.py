@@ -19,6 +19,7 @@ def obter_regras(texto_completo):
     
     # 1. Regras Comuns (Base)
     regras = {
+        "Cabeçalho (MINISTÉRIO/CONSELHO)": comuns.auditar_cabecalho,
         "Ementa (Verbo Inicial)": comuns.auditar_ementa,
         "Bloco de Assinatura": comuns.auditar_assinatura,
         "Fecho de Vigência": comuns.auditar_fecho_vigencia,
@@ -26,6 +27,10 @@ def obter_regras(texto_completo):
         "Parágrafos (§ Espaçamento)": comuns.auditar_espacamento_paragrafo,
         "Datas (Zero à Esquerda)": comuns.auditar_data_sem_zero_esquerda,
         "Siglas (Uso do travessão)": comuns.auditar_uso_siglas,
+        "Incisos (Pontuação)": comuns.auditar_pontuacao_incisos,
+        "Alíneas (Pontuação)": comuns.auditar_pontuacao_alineas,
+        
+        # Regras de Anexo
         "Anexo (Identificação)": anexo.auditar_anexo, 
         "Anexo: Sequência de Capítulos": anexo.auditar_sequencia_capitulos_anexo,
         "Anexo: Sequência de Seções": anexo.auditar_sequencia_secoes_anexo,
@@ -33,20 +38,13 @@ def obter_regras(texto_completo):
         "Anexo: Pontuação Hierárquica": anexo.auditar_pontuacao_hierarquica_anexo,
     }
 
-    # 2. Regras Específicas (Injeção de Dependência)
+    # 2. Regras Específicas
     if tipo == "CEG":
-        regras["Brasão / Cabeçalho (CEG)"] = ceg.auditar_cabecalho_ceg
         regras["Epígrafe (CEG/MIDR)"] = ceg.auditar_epigrafe_ceg
         regras["Preâmbulo (CEG)"] = ceg.auditar_preambulo_ceg
         
-    else:
+    elif tipo == "CONDEL":
+        regras["Epígrafe (CONDEL)"] = condel.auditar_epigrafe_condel
+        regras["Preâmbulo (CONDEL)"] = condel.auditar_preambulo_condel
         
-        label_tipo = tipo if tipo != "DESCONHECIDO" else "CONDEL"
-        
-        regras["Brasão / Ministério"] = condel.auditar_cabecalho_condel
-        regras[f"Epígrafe ({label_tipo})"] = condel.auditar_epigrafe_condel
-        regras[f"Preâmbulo ({label_tipo})"] = condel.auditar_preambulo_condel
-        regras["Incisos (Pontuação Estrita)"] = comuns.auditar_pontuacao_incisos 
-        regras["Alíneas (Pontuação Estrita)"] = comuns.auditar_pontuacao_alineas
-
     return regras, tipo

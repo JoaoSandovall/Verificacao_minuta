@@ -18,7 +18,7 @@ def auditar_anexo(texto_completo):
         
     return {
         "status": "ALERTA",
-        "detalhe": [f"O termo 'ANEXO' não foi encontrado no final do documento. Se esta resolução possui anexo, insira o título 'ANEXO' para habilitar a auditoria específica. Se não possui, ignore este aviso."]
+        "detalhe": [f"O termo 'ANEXO' não foi encontrado no final do documento. Se esta resolução possui anexo, insira o título 'ANEXO' para a avaliação correta. Se essa resolução não possui anexo, ignore este aviso."]
     }
     
 def auditar_sequencia_capitulos_anexo(texto_completo):

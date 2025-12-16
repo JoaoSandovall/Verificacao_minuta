@@ -6,7 +6,6 @@ def _obter_contexto(texto, match):
     return texto[inicio : inicio+60] + "..."
 
 def _calcular_trecho_sujo(texto_completo, pos_inicio_match, pos_fim_match):
-    
     resto = texto_completo[pos_fim_match:]
     match_separador = re.match(r'^[\. \tº°ᵒ]*', resto)
     tamanho_extra = len(match_separador.group(0)) if match_separador else 0
@@ -14,18 +13,69 @@ def _calcular_trecho_sujo(texto_completo, pos_inicio_match, pos_fim_match):
 
 # --- REGRAS DE ESTRUTURA ---
 
+def auditar_cabecalho(texto_completo):
+    """Aceita Ministério com ou sem '/Secretaria Executiva'."""
+    padrao_base = "MINISTÉRIO DA INTEGRAÇÃO E DO DESENVOLVIMENTO REGIONAL"
+    primeiras_linhas = texto_completo.strip().split('\n')
+    if not primeiras_linhas:
+        return {"status": "FALHA", "detalhe": ["Documento vazio."]}
+    
+    linha1 = primeiras_linhas[0].strip()
+    
+    # Aceita exato ou com sufixo (Case Sensitive conforme solicitado)
+    if linha1 == padrao_base or linha1 == f"{padrao_base}/SECRETARIA EXECUTIVA" or linha1 == f"{padrao_base}/Secretaria Executiva":
+        return {"status": "OK", "detalhe": "Cabeçalho CEG correto."}
+    
+    return {"status": "FALHA", "detalhe": [f"Cabeçalho deve ser '{padrao_base}' (opcional: /Secretaria Executiva). Encontrado: '{linha1}'"]}
+
+def verificar_fecho_preambulo(texto_completo):
+    erros = []
+    # Procura por 'resolve:' ou 'resolveu:' capturando se tem 'o Colegiado' antes
+    match_fecho = re.search(r"(o\s+Colegiado\s+)?(resolveu?)\s*:", texto_completo, re.IGNORECASE)
+
+    if match_fecho:
+        tem_colegiado = bool(match_fecho.group(1)) # Se capturou "o Colegiado "
+        verbo_encontrado = match_fecho.group(2).lower() # "resolve" ou "resolveu"
+        texto_original = match_fecho.group(0) # Ex: "o Colegiado resolve:" ou "resolveu:"
+        
+        if tem_colegiado and verbo_encontrado == "resolve":
+            # Caso 1: Tem Colegiado, mas usou 'resolve' (Errado) -> Pede 'resolveu'
+            erros.append({
+                "mensagem": "Quando antecedido por 'o Colegiado', o verbo deve ser 'resolveu'.",
+                "original": texto_original,
+                "sugestao": match_fecho.group(1) + "resolveu:",
+                "span": match_fecho.span(),
+                "tipo": "fixable"
+            })
+            
+        elif not tem_colegiado and verbo_encontrado == "resolveu":
+            # Caso 2: NÃO tem Colegiado, mas usou 'resolveu' (Errado) -> Pede 'resolve'
+            erros.append({
+                "mensagem": "Neste contexto (sem 'o Colegiado'), o verbo deve ser 'resolve'.",
+                "original": texto_original,
+                "sugestao": "resolve:",
+                "span": match_fecho.span(),
+                "tipo": "fixable"
+            })
+    else:
+        # Caso 3: Não achou nem 'resolve:' nem 'resolveu:'
+        erros.append({
+            "mensagem": "Fecho do preâmbulo não encontrado. Esperado 'resolve:' ou 'o Colegiado resolveu:'.",
+            "original": texto_completo[:100], # Pega o começo só pra marcar algo se necessário
+            "tipo": "alert"
+        })
+        
+    return erros
+
 def auditar_numeracao_artigos(texto_completo):
     erros = []
-    # Alterado para capturar a indentação (grupo 1) e o número (grupo 2)
     matches = re.finditer(r'^(\s*)Art\.\s*(\d+)', texto_completo, re.MULTILINE)
     
     for match in matches:
-        indentacao = match.group(1) # Captura espaços/tabs antes do Art.
+        indentacao = match.group(1) 
         numero = int(match.group(2))
         pos_fim = match.end()
         contexto = _obter_contexto(texto_completo, match)
-        
-        # Calcula endereço exato
         trecho_analisado = _calcular_trecho_sujo(texto_completo, match.start(), pos_fim)
         
         trecho_pos = texto_completo[pos_fim : pos_fim + 3]
@@ -43,9 +93,7 @@ def auditar_numeracao_artigos(texto_completo):
                 else: msgs_erro.append(f"símbolo inválido")
             if espacos != '  ': msgs_erro.append("espaçamento incorreto (esperado 2)")
             
-            if msgs_erro: 
-                # Preserva a indentação original na correção
-                correcao = f"{indentacao}Art. {numero}ᵒ  "
+            if msgs_erro: correcao = f"{indentacao}Art. {numero}ᵒ  "
 
         elif numero >= 10:
             simbolo = trecho_pos[0]
@@ -55,9 +103,7 @@ def auditar_numeracao_artigos(texto_completo):
                 else: msgs_erro.append(f"pontuação incorreta ('{simbolo}')")
             if espacos != '  ': msgs_erro.append("espaçamento incorreto (esperado 2)")
             
-            if msgs_erro: 
-                # Preserva a indentação original na correção
-                correcao = f"{indentacao}Art. {numero}.  "
+            if msgs_erro: correcao = f"{indentacao}Art. {numero}.  "
         
         if msgs_erro:
             texto_msg = " e ".join(msgs_erro)
@@ -67,7 +113,7 @@ def auditar_numeracao_artigos(texto_completo):
                 "mensagem": f"No 'Art. {numero}': {texto_msg}. Trecho: '{contexto}'",
                 "original": trecho_analisado,
                 "sugestao": correcao,
-                "span": [match.start(), match.start() + len(trecho_analisado)], # Endereço
+                "span": [match.start(), match.start() + len(trecho_analisado)], 
                 "tipo": "fixable"
             })
     
@@ -76,15 +122,12 @@ def auditar_numeracao_artigos(texto_completo):
 
 def auditar_espacamento_paragrafo(texto_completo):
     erros = []
-    
-    # Alterado para capturar a indentação (grupo 1)
     matches = re.finditer(r'^(\s*)§\s+(\d+)', texto_completo, re.MULTILINE)
     for match in matches:
         indentacao = match.group(1)
         numero = int(match.group(2))
         pos_fim = match.end()
         contexto = _obter_contexto(texto_completo, match)
-        
         trecho_analisado = _calcular_trecho_sujo(texto_completo, match.start(), pos_fim)
         
         trecho_pos = texto_completo[pos_fim : pos_fim + 3]
@@ -93,41 +136,28 @@ def auditar_espacamento_paragrafo(texto_completo):
         msgs_erro = []
         correcao = None
 
-        # Lógica para § 1 a § 9
         if 1 <= numero <= 9:
             simbolo = trecho_pos[0]
             espacos = trecho_pos[1:]
-            
             if simbolo != 'ᵒ':
                 if simbolo in ['º', '°']: msgs_erro.append(f"símbolo incorreto ('{simbolo}', use 'ᵒ')")
                 elif simbolo == '.': msgs_erro.append("uso de ponto final (use 'ᵒ')")
                 else: msgs_erro.append(f"símbolo inválido ('{simbolo}')")
-            
-            if espacos != '  ':
-                msgs_erro.append("espaçamento incorreto (esperado 2)")
-                
-            if msgs_erro:
-                correcao = f"{indentacao}§ {numero}ᵒ  "
+            if espacos != '  ': msgs_erro.append("espaçamento incorreto (esperado 2)")
+            if msgs_erro: correcao = f"{indentacao}§ {numero}ᵒ  "
 
-        # Lógica para § 10 em diante
         elif numero >= 10:
             simbolo = trecho_pos[0]
             espacos = trecho_pos[1:]
-            
             if simbolo != '.':
                 if simbolo in ['º', '°', 'ᵒ']: msgs_erro.append("uso de ordinal (use ponto final)")
                 else: msgs_erro.append(f"pontuação incorreta ('{simbolo}')")
-            
-            if espacos != '  ':
-                msgs_erro.append("espaçamento incorreto (esperado 2)")
-
-            if msgs_erro:
-                correcao = f"{indentacao}§ {numero}.  "
+            if espacos != '  ': msgs_erro.append("espaçamento incorreto (esperado 2)")
+            if msgs_erro: correcao = f"{indentacao}§ {numero}.  "
 
         if msgs_erro:
             texto_msg = " e ".join(msgs_erro)
             texto_msg = texto_msg[0].upper() + texto_msg[1:]
-            
             erros.append({
                 "mensagem": f"No '§ {numero}': {texto_msg}. Trecho: '{contexto}'",
                 "original": trecho_analisado,
@@ -136,15 +166,12 @@ def auditar_espacamento_paragrafo(texto_completo):
                 "tipo": "fixable"
             })
 
-    # Alterado para capturar a indentação no Parágrafo único também
     matches_unico = re.finditer(r'^(\s*)Parágrafo\s+único\.', texto_completo, re.MULTILINE)
     for match in matches_unico:
         indentacao = match.group(1)
         pos_fim = match.end()
         contexto = _obter_contexto(texto_completo, match)
-        
         trecho_analisado = _calcular_trecho_sujo(texto_completo, match.start(), pos_fim)
-        
         trecho_check = texto_completo[pos_fim : pos_fim + 2]
         if trecho_check != "  ":
             erros.append({
@@ -183,7 +210,7 @@ def auditar_uso_siglas(texto_completo):
     return {"status": "FALHA", "detalhe": erros}
 
 def auditar_ementa(texto_completo):
-    match = re.search(r".* DE \d{4}\s*\n+(.*)", texto_completo, re.MULTILINE)
+    match = re.search(r".* DE \d{4}\s*\n+(?:[ \t]*\*\s*MINUTA DE DOCUMENTO.*?\n+)?(.*)", texto_completo, re.MULTILINE)
     if match:
         texto = match.group(1).strip()
         verbo = texto.split()[0]
@@ -220,7 +247,6 @@ def auditar_pontuacao_incisos(texto_completo):
         numeral = re.match(r'^\s*([IVXLCDM]+)', texto).group(1)
         val = _roman_to_int(numeral)
         trecho_contexto = texto[:60] + "..." 
-        
         if val != 1 and i > 0:
             prev = matches[i-1].group(1).strip()
             prev_rom = re.match(r'^\s*([IVXLCDM]+)', prev).group(1)
@@ -232,7 +258,6 @@ def auditar_pontuacao_incisos(texto_completo):
                     "original": texto,
                     "tipo": "highlight"
                  })
-
         pos_fim = match.end()
         prox = texto_completo[pos_fim:pos_fim+200].lstrip()
         is_last = True
@@ -253,7 +278,6 @@ def auditar_pontuacao_incisos(texto_completo):
                     "original": texto,
                     "tipo": "highlight"
                 })
-    
     if not erros: return {"status": "OK", "detalhe": "Pontuação incisos correta."}
     return {"status": "FALHA", "detalhe": erros[:50]}
 

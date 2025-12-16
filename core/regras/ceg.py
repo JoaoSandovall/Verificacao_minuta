@@ -1,22 +1,9 @@
 import re
+from core.regras.comuns import verificar_fecho_preambulo  # <--- IMPORTANTE
 
-def auditar_cabecalho_ceg(texto_completo):
-    """Aceita Ministério com ou sem '/Secretaria Executiva'."""
-    padrao_base = "MINISTÉRIO DA INTEGRAÇÃO E DO DESENVOLVIMENTO REGIONAL"
-    primeiras_linhas = texto_completo.strip().split('\n')
-    if not primeiras_linhas:
-        return {"status": "FALHA", "detalhe": ["Documento vazio."]}
-    
-    linha1 = primeiras_linhas[0].strip()
-    
-    # Aceita exato ou com sufixo
-    if linha1 == padrao_base or linha1 == f"{padrao_base}/SECRETARIA EXECUTIVA" or linha1 == f"{padrao_base}/Secretaria Executiva":
-        return {"status": "OK", "detalhe": "Cabeçalho CEG correto."}
-    
-    return {"status": "FALHA", "detalhe": [f"Cabeçalho deve ser '{padrao_base}' (opcional: /Secretaria Executiva). Encontrado: '{linha1}'"]}
+# A função auditar_cabecalho_ceg foi removida daqui pois agora está em comuns.py
 
 def auditar_epigrafe_ceg(texto_completo):
-    
     if re.search(r"RESOLUÇÃO\s+CEG[- ]MIDR", texto_completo, re.IGNORECASE):
         return {"status": "FALHA", "detalhe": ["A epígrafe deve usar barra '/' (CEG/MIDR). Hífen ou espaço não são permitidos."]}
 
@@ -28,7 +15,6 @@ def auditar_epigrafe_ceg(texto_completo):
     match = padrao.search(texto_completo)
     
     if not match:
-        # Se não achou, verifica se o erro foi apenas o símbolo do número
         if "N°" in texto_completo or "Nº" in texto_completo:
              return {"status": "FALHA", "detalhe": ["Epígrafe usando símbolo errado. Use 'Nᵒ' (bolinha especial)."]}
         
@@ -37,15 +23,14 @@ def auditar_epigrafe_ceg(texto_completo):
     return {"status": "OK", "detalhe": "Epígrafe CEG/MIDR correta."}
 
 def auditar_preambulo_ceg(texto_completo):
-    
     erros = []
     
-    # 1. Verifica Autoridade e Travessão
+    # 1. Verifica Autoridade e Travessão (Específico do CEG)
     match_autoridade = re.search(r"(O COORDENADOR.*?REGIONAL)\s*([-–—])\s*CEG/MIDR", texto_completo, re.DOTALL)
     
     if match_autoridade:
         separador = match_autoridade.group(2)
-        if separador != '—': # Se não for o travessão grande
+        if separador != '—': 
             erros.append(f"Separador da sigla incorreto. Deve ser um travessão (—). Encontrado: '{separador}'.")
     else:
         if "O COORDENADOR DO COMITÊ" not in texto_completo:
@@ -53,11 +38,9 @@ def auditar_preambulo_ceg(texto_completo):
         elif "CEG/MIDR" not in texto_completo:
             erros.append("Sigla da autoridade 'CEG/MIDR' não encontrada no preâmbulo.")
 
-    # 2. Verifica Fecho (Flexível)
-    tem_fecho_minusculo = "resolve:" in texto_completo
-    
-    if not tem_fecho_minusculo:
-        erros.append("Fecho do preâmbulo não encontrado. Aceito: 'resolve:'")
+    # 2. Verifica Fecho usando a função comum (CONEXÃO AQUI)
+    erros_fecho = verificar_fecho_preambulo(texto_completo)
+    erros.extend(erros_fecho)
 
     if erros:
         return {"status": "FALHA", "detalhe": erros}
