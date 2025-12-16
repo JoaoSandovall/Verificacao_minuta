@@ -58,6 +58,18 @@ def auditar_epigrafe_condel(texto_completo):
         if "N°" in texto_completo or "Nº" in texto_completo:
              return {"status": "FALHA", "detalhe": ["Epígrafe usando símbolo errado. Use 'Nᵒ' (bolinha especial)."]}
         return {"status": "FALHA", "detalhe": ["Padrão 'RESOLUÇÃO CONDEL... Nᵒ ...' não encontrado."]}
+    
+    texto_epigrafe = match.group(0)
+    if not texto_epigrafe.isupper():
+        return {
+            "status": "FALHA",
+            "detalhe": [{
+                "mensagem": "A epígrafe deve estar totalmente em MAIÚSCULAS.",
+                "original": texto_epigrafe,
+                "tipo": "highlight"
+            }]
+        }
+    
     return {"status": "OK", "detalhe": "Epígrafe correta."}
 
 def auditar_preambulo_condel(texto_completo):

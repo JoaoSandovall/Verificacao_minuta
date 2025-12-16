@@ -18,6 +18,17 @@ def auditar_epigrafe_ceg(texto_completo):
         
         return {"status": "FALHA", "detalhe": ["Não encontrado o padrão de epígrafe CEG/MIDR correto (Verifique 'Nᵒ', datas e prefixos 'MINUTA DE...')."]}
     
+    texto_epigrafe = match.group(0)
+    if not texto_epigrafe.isupper():
+        return {
+            "status": "FALHA",
+            "detalhe": [{
+                "mensagem": "A epígrafe deve estar totalmente em MAIÚSCULAS.",
+                "original": texto_epigrafe,
+                "tipo": "highlight"
+            }]
+        }
+    
     return {"status": "OK", "detalhe": "Epígrafe CEG/MIDR correta."}
 
 def auditar_preambulo_ceg(texto_completo):
@@ -28,6 +39,7 @@ def auditar_preambulo_ceg(texto_completo):
     
     if match_autoridade:
         separador = match_autoridade.group(2)
+        
         if separador != '—': 
             erros.append(f"Separador da sigla incorreto. Deve ser um travessão (—). Encontrado: '{separador}'.")
     else:
