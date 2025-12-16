@@ -11,3 +11,8 @@ def _roman_to_int(s):
             result += value
         prev_value = value
     return result
+
+def _normalizar(texto):
+    if not texto:
+        return ""
+    return " ".join(texto.split()).upper()

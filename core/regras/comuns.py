@@ -349,3 +349,32 @@ def auditar_pontuacao_alineas(texto_completo):
                  })
     if not erros: return {"status": "OK", "detalhe": "Alíneas corretas."}
     return {"status": "FALHA", "detalhe": erros[:50]}
+
+def auditar_epigrafe_generica(texto_completo, regex_compilado, msgs_erro_personalizadas=None):
+    
+    if msgs_erro_personalizadas is None:
+        msgs_erro_personalizadas = ["Padrão de epígrafe não encontrado."]
+
+    match = regex_compilado.search(texto_completo)
+    
+    if not match:
+        # Tenta dar uma dica mais específica se achar o símbolo errado
+        if "N°" in texto_completo or "Nº" in texto_completo:
+             return {"status": "FALHA", "detalhe": ["Epígrafe usando símbolo errado. Use 'Nᵒ' (bolinha especial)."]}
+        
+        return {"status": "FALHA", "detalhe": msgs_erro_personalizadas}
+    
+    # Verifica Maiúsculas (Lógica centralizada)
+    texto_epigrafe = match.group(0)
+    if not texto_epigrafe.isupper():
+        return {
+            "status": "FALHA",
+            "detalhe": [{
+                "mensagem": "A epígrafe deve estar totalmente em MAIÚSCULAS.",
+                "original": texto_epigrafe,
+                # "sugestao": removida para evitar erro de índice
+                "tipo": "highlight"
+            }]
+        }
+
+    return {"status": "OK", "detalhe": "Epígrafe correta."}
