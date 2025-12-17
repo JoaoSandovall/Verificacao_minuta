@@ -13,8 +13,24 @@ def identificar_tipo_resolucao(texto):
     
     return "DESCONHECIDO"
 
+def obter_regras_anexo():
+
+    return {
+        "Anexo (Identificação)": anexo.auditar_anexo, 
+        "Anexo: Sequência de Capítulos": anexo.auditar_sequencia_capitulos_anexo,
+        "Anexo: Sequência de Seções": anexo.auditar_sequencia_secoes_anexo,
+        "Anexo: Sequência de Artigos": anexo.auditar_sequencia_artigos_anexo,
+        "Anexo: Pontuação Hierárquica": anexo.auditar_pontuacao_hierarquica_anexo,
+        # Regras comuns no anexo:
+        "Artigos (Formato)": comuns.auditar_numeracao_artigos,
+        "Parágrafos (Espaçamento)": comuns.auditar_espacamento_paragrafo,
+        "Siglas": comuns.auditar_uso_siglas,
+        "Incisos (Pontuação)": comuns.auditar_pontuacao_incisos,
+        "Alíneas (Pontuação)": comuns.auditar_pontuacao_alineas
+    }
+
 def obter_regras(texto_completo):
-    
+
     tipo = identificar_tipo_resolucao(texto_completo)
     
     # 1. Regras Comuns (Base)
@@ -29,13 +45,6 @@ def obter_regras(texto_completo):
         "Siglas (Uso do travessão)": comuns.auditar_uso_siglas,
         "Incisos (Pontuação)": comuns.auditar_pontuacao_incisos,
         "Alíneas (Pontuação)": comuns.auditar_pontuacao_alineas,
-        
-        # Regras de Anexo
-        "Anexo (Identificação)": anexo.auditar_anexo, 
-        "Anexo: Sequência de Capítulos": anexo.auditar_sequencia_capitulos_anexo,
-        "Anexo: Sequência de Seções": anexo.auditar_sequencia_secoes_anexo,
-        "Anexo: Sequência de Artigos": anexo.auditar_sequencia_artigos_anexo,
-        "Anexo: Pontuação Hierárquica": anexo.auditar_pontuacao_hierarquica_anexo,
     }
 
     # 2. Regras Específicas

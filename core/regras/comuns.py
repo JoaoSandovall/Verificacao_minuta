@@ -372,7 +372,6 @@ def auditar_epigrafe_generica(texto_completo, regex_compilado, msgs_erro_persona
             "detalhe": [{
                 "mensagem": "A epígrafe deve estar totalmente em MAIÚSCULAS.",
                 "original": texto_epigrafe,
-                # "sugestao": removida para evitar erro de índice
                 "tipo": "highlight"
             }]
         }
