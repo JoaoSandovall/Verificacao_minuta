@@ -1,5 +1,5 @@
 import re
-from core.regras.comuns import verificar_fecho_preambulo, auditar_epigrafe_generica
+from core.regras import resolucao
 
 def auditar_epigrafe_ceg(texto_completo):
     # Verificação extra específica do CEG (hífen vs barra)
@@ -14,11 +14,11 @@ def auditar_epigrafe_ceg(texto_completo):
     
     msg_erro = ["Não encontrado o padrão de epígrafe CEG/MIDR correto (Verifique 'Nᵒ', datas e prefixos 'MINUTA DE...')."]
     
-    # Chama a função genérica
-    return auditar_epigrafe_generica(texto_completo, padrao, msg_erro)
+    # Chama a função 
+    return resolucao.auditar_epigrafe(texto_completo, padrao, msg_erro)
 
 def auditar_preambulo_ceg(texto_completo):
-    # ... (Mantenha a função auditar_preambulo_ceg exatamente como estava) ...
+    
     erros = []
     
     match_autoridade = re.search(r"(O COORDENADOR.*?REGIONAL)\s*([-–—])\s*CEG/MIDR", texto_completo, re.DOTALL | re.IGNORECASE)
@@ -33,7 +33,7 @@ def auditar_preambulo_ceg(texto_completo):
         elif "CEG/MIDR" not in texto_completo.upper():
             erros.append("Sigla da autoridade 'CEG/MIDR' não encontrada no preâmbulo.")
 
-    erros_fecho = verificar_fecho_preambulo(texto_completo)
+    erros_fecho = resolucao.verificar_fecho_preambulo(texto_completo)
     erros.extend(erros_fecho)
 
     if erros:

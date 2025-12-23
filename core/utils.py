@@ -13,6 +13,11 @@ def _roman_to_int(s):
     return result
 
 def _normalizar(texto):
+    # Remove espaços extras, e usa o uppper para transformar em maiusculo
     if not texto:
         return ""
     return " ".join(texto.split()).upper()
+
+def _obter_contexto(texto, match):
+    inicio = match.start()
+    return texto[inicio : inicio+60] + '...'
