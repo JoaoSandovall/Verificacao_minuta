@@ -246,6 +246,7 @@ def auditar_pontuacao_hierarquica_anexo(texto_completo):
 
         proximo_match = matches[i + 1] if (i + 1) < len(matches) else None
         inicia_subdivisao = False
+        
         if proximo_match:
             m_prox = proximo_match.group(1).strip()
             proximo_eh_inciso = bool(re.match(r'^[IVXLCDM]+', m_prox))
