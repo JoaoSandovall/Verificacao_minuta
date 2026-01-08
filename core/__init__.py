@@ -1,5 +1,5 @@
 from .regras import estrutura, resolucao, anexo
-from .regras.orgaos import condel, ceg #coaride, cnrh
+from .regras.orgaos import condel, ceg, coaride, cnrh
 
 def identificar_tipo_resolucao(texto):
     if not texto: 
@@ -11,10 +11,10 @@ def identificar_tipo_resolucao(texto):
         return "CEG"
     elif "RESOLUÇÃO CONDEL" in inicio or "CONDEL/SUDECO" in inicio:
         return "CONDEL"
-    # elif "RESOLUÇÃO COARIDE" in inicio:
-    #     return "COARIDE"
-    # elif "CNRH" in inicio:
-    #     return "CNRH"
+    elif "RESOLUÇÃO COARIDE" in inicio:
+        return "COARIDE"
+    elif "CNRH" in inicio:
+        return "CNRH"
     
     return "DESCONHECIDO"
 
@@ -57,6 +57,7 @@ def obter_regras(texto_completo):
 
     # 2. Regras Específicas
     if tipo == "CEG":
+        regras["Cabeçalho (MINISTÉRIO/COMITÊ)"] = ceg.auditar_cabecalho_ceg
         regras["Epígrafe (CEG/MIDR)"] = ceg.auditar_epigrafe_ceg
         regras["Preâmbulo (CEG)"] = ceg.auditar_preambulo_ceg
         
@@ -65,8 +66,13 @@ def obter_regras(texto_completo):
         regras["Epígrafe (CONDEL)"] = condel.auditar_epigrafe_condel
         regras["Preâmbulo (CONDEL)"] = condel.auditar_preambulo_condel
         
-    # elif tipo == "COARIDE":
+    elif tipo == "COARIDE":
+        regras["Epígrafe (COARIDE)"] = coaride.auditar_epigrafe_coaride
+        regras["Preâmbulo (COARIDE)"] = coaride.auditar_preambulo_coarides
         
-    # elif tipo == "CNRH":        
-        
+    elif tipo == "CNRH":        
+        regras["Cabeçalho (MINISTÉRIO/CONSELHO)"] = cnrh.auditar_cabecalho_cnrh
+        regras["Epígrafe (CNRH)"] = cnrh.auditar_epigrafe_cnrh
+        regras["Preâmbulo (CNRH)"] = cnrh.auditar_preambulo_cnrh
+    
     return regras, tipo

@@ -7,7 +7,6 @@ def substituir_por_espacos(match):
     return " " * len(match.group(0))
 
 def substituir_prefixo_minuta(match):
-    texto_todo = match.group(0)
     palavra_chave = match.group(2) 
     inicio_palavra = match.start(2) - match.start(0)
     return (" " * inicio_palavra) + palavra_chave

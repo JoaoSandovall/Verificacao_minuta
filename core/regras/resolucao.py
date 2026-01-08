@@ -116,9 +116,16 @@ def verificar_fecho_preambulo(texto_completo):
         verbo = match_fecho.group(2).lower()
        
         if tem_colegiado and verbo == "resolve":
-            erros.append({"mensagem": "Com 'Colegiado', use 'resolveu'.", "original": match_fecho.group(0), "sugestao": match_fecho.group(1)+"resolveu:", "span": match_fecho.span(), "tipo": "fixable"})
+            erros.append({"mensagem": "Com 'Colegiado', use 'resolveu'.",
+                          "original": match_fecho.group(0), 
+                          "span": match_fecho.span(),
+                          "tipo": "highlight"})
+            
         elif not tem_colegiado and verbo == "resolveu":
-            erros.append({"mensagem": "Sem 'Colegiado', use 'resolve'.", "original": match_fecho.group(0), "sugestao": "resolve:", "span": match_fecho.span(), "tipo": "fixable"})
+            erros.append({"mensagem": "Sem 'Colegiado', use 'resolve'.",
+                          "original": match_fecho.group(0),
+                          "span": match_fecho.span(),
+                          "tipo": "highlight"})
     else:
         erros.append({"mensagem": "Fecho 'resolve:' não encontrado.", "original": texto_completo[:50], "tipo": "alert"})
     return erros

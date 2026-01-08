@@ -1,15 +1,5 @@
 import re
-from core.utils import _roman_to_int, _obter_contexto
-
-# --- Funções Auxiliares ---
-def _calcular_trecho_sujo(texto_completo, pos_inicio_match, pos_fim_match):
-    
-    resto = texto_completo[pos_fim_match:]
-    match_separador = re.match(r'^[\. \tº°ᵒ]*', resto)
-    tamanho_extra = len(match_separador.group(0)) if match_separador else 0
-    return texto_completo[pos_inicio_match : pos_fim_match + tamanho_extra]
-
-# --- Regras de Formatação ---
+from core.utils import _roman_to_int
 
 def auditar_formatacao_artigos(texto_completo):
     """
@@ -33,7 +23,6 @@ def auditar_formatacao_artigos(texto_completo):
         sujeira = match.group(3)
         
         texto_capturado = match.group(0)
-        contexto = _obter_contexto(texto_completo, match)
         
         # Análise da "sujeira" para ver se a formatação está certa
         msgs_erro = []
@@ -74,7 +63,7 @@ def auditar_formatacao_artigos(texto_completo):
                 "mensagem": f"No 'Art. {numero}': {texto_msg}.",
                 "original": texto_capturado,
                 "sugestao": correcao,
-                "span": match.span(), # <--- Span exato do Regex
+                "span": match.span(),
                 "tipo": "fixable"
             })
     
@@ -136,7 +125,7 @@ def auditar_formatacao_paragrafo(texto_completo):
                 "mensagem": f"No '§ {numero}': {texto_msg}.",
                 "original": texto_capturado,
                 "sugestao": correcao,
-                "span": match.span(), # Span exato
+                "span": match.span(), 
                 "tipo": "fixable"
             })
 
@@ -155,7 +144,7 @@ def auditar_formatacao_paragrafo(texto_completo):
                 "mensagem": "Após 'Parágrafo único.', deve haver dois espaços.",
                 "original": texto_capturado,
                 "sugestao": f"{indentacao}Parágrafo único.  ",
-                "span": match.span(), # Span exato
+                "span": match.span(),
                 "tipo": "fixable"
             })
 
@@ -168,13 +157,11 @@ def auditar_data(texto_completo):
     
     for match in regex_data.finditer(texto_completo):
         texto_errado = match.group(0)
-        sugestao = texto_errado[1:] 
         erros.append({
             "mensagem": "Não se deve usar zero à esquerda em datas por extenso.",
             "original": texto_errado,
-            "sugestao": sugestao,
             "span": match.span(),
-            "tipo": "fixable"
+            "tipo": "highlight"
         })
 
     if erros:
@@ -200,9 +187,8 @@ def auditar_uso_siglas(texto_completo):
         erros.append({
             "mensagem": f"Definição de sigla ({sigla}): use travessão (— {sigla}) em vez de parênteses.",
             "original": match.group(0),
-            "sugestao": f"— {sigla}",
             "span": match.span(),
-            "tipo": "fixable"
+            "tipo": "highlight"
         })
 
     # --- CASO 2: Sigla com Hífen Comum ---
@@ -217,9 +203,8 @@ def auditar_uso_siglas(texto_completo):
         erros.append({
             "mensagem": f"Separação de sigla ({sigla}): use travessão (—) em vez de hífen (-).",
             "original": match.group(0),
-            "sugestao": f" — {sigla}", 
             "span": match.span(),
-            "tipo": "fixable"
+            "tipo": "highlight"
         })
 
     if erros:
