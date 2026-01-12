@@ -7,12 +7,7 @@ def auditar_formatacao_artigos(texto_completo):
     Usa Regex expandido para capturar pontuação incorreta no próprio match.
     """
     erros = []
-    # Regex explica:
-    # Grupo 1: Indentação
-    # "Art." literal
-    # Espaços opcionais
-    # Grupo 2: O Número
-    # Grupo 3: A "sujeira" pós-número (pontos, graus, espaços, tabs) até o fim da linha ou próximo char útil
+    
     padrao = re.compile(r'^(\s*)Art\.\s*(\d+)([\. \tº°ᵒ]*)', re.MULTILINE)
     
     matches = list(padrao.finditer(texto_completo))
@@ -21,27 +16,24 @@ def auditar_formatacao_artigos(texto_completo):
         indentacao = match.group(1) 
         numero = int(match.group(2))
         sujeira = match.group(3)
-        
         texto_capturado = match.group(0)
-        
-        # Análise da "sujeira" para ver se a formatação está certa
         msgs_erro = []
         correcao = None
         
         # Caso 1: Artigos Ordinais (1 ao 9) -> Esperado: "Art. Xº  "
         if 1 <= numero <= 9:
             # Verifica se tem o símbolo 'ᵒ' (ordinal correto)
-            if 'ᵒ' not in sujeira:
-                if any(x in sujeira for x in ['º', '°']): msgs_erro.append("símbolo incorreto (use 'ᵒ')")
-                elif '.' in sujeira: msgs_erro.append("uso de ponto final (use 'ᵒ')")
+            if 'º' not in sujeira:
+                if any(x in sujeira for x in ['ᵒ', '°']): msgs_erro.append("símbolo incorreto (use 'º')")
+                elif '.' in sujeira: msgs_erro.append("uso de ponto final (use 'º')")
                 else: msgs_erro.append("ausência de indicador ordinal")
             
             # Verifica espaçamento (deve terminar com 2 espaços)
-            if not sujeira.endswith('  '):
+            if not sujeira.endswith('  '): 
                 msgs_erro.append("espaçamento incorreto (esperado 2 espaços após o símbolo)")
                 
             if msgs_erro:
-                correcao = f"{indentacao}Art. {numero}ᵒ  "
+                correcao = f"{indentacao}Art. {numero}º  "
 
         # Caso 2: Artigos Cardinais (10 em diante) -> Esperado: "Art. X.  "
         elif numero >= 10:
@@ -96,16 +88,16 @@ def auditar_formatacao_paragrafo(texto_completo):
         correcao = None
 
         if 1 <= numero <= 9:
-            if 'ᵒ' not in sujeira:
-                if any(x in sujeira for x in ['º', '°']): msgs_erro.append("símbolo incorreto (use 'ᵒ')")
-                elif '.' in sujeira: msgs_erro.append("uso de ponto final (use 'ᵒ')")
+            if 'º' not in sujeira:
+                if any(x in sujeira for x in ['ᵒ', '°']): msgs_erro.append("símbolo incorreto (use 'º')")
+                elif '.' in sujeira: msgs_erro.append("uso de ponto final (use 'º')")
                 else: msgs_erro.append("símbolo ausente")
             
             if not sujeira.endswith('  '):
                 msgs_erro.append("espaçamento incorreto (esperado 2 espaços)")
                 
             if msgs_erro: 
-                correcao = f"{indentacao}§ {numero}ᵒ  "
+                correcao = f"{indentacao}§ {numero}º  "
 
         elif numero >= 10:
             if '.' not in sujeira:

@@ -43,6 +43,7 @@ def obter_regras(texto_completo):
     regras = {
         "Cabeçalho (Genérico)": resolucao.auditar_cabecalho,
         "Ementa": resolucao.auditar_ementa,
+        "Verbo Art. 1º": resolucao.auditar_verbo_primeiro_artigo,
         "Assinatura": resolucao.auditar_assinatura,
         "Vigência": resolucao.auditar_fecho_vigencia,
         # Regras de Formatação GERAL

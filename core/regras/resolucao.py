@@ -106,29 +106,74 @@ def auditar_ementa(texto):
     return {"status": "OK", "detalhe": "Ementa válida."}
 
 def verificar_fecho_preambulo(texto_completo):
-    
-    match_fecho = re.search(r"(o\s+Colegiado\s+)?(resolveu?)\s*:", texto_completo, re.IGNORECASE)
+    # Procura por "resolve" ou "resolveu" seguido de dois pontos, ignorando maiúsculas na busca
+    match_fecho = re.search(r"(resolveu?)\s*:", texto_completo, re.IGNORECASE)
     
     erros = []
     
     if match_fecho:
-        tem_colegiado = bool(match_fecho.group(1))
-        verbo = match_fecho.group(2).lower()
-       
-        if tem_colegiado and verbo == "resolve":
-            erros.append({"mensagem": "Com 'Colegiado', use 'resolveu'.",
-                          "original": match_fecho.group(0), 
-                          "span": match_fecho.span(),
-                          "tipo": "highlight"})
+        verbo_encontrado = match_fecho.group(1) # Captura a palavra (ex: Resolve, resolveu, RESOLVEU)
+        texto_completo_match = match_fecho.group(0) # Captura com os dois pontos (ex: resolveu:)
+        
+        # A regra é estrita: tem que ser exatamente "resolve" (minúsculo e sem 'u')
+        if verbo_encontrado != "resolve":
+            erros.append({
+                "mensagem": "O fecho deve ser apenas 'resolve:' (em minúsculo).",
+                "original": texto_completo_match,
+                "span": match_fecho.span(),
+                "tipo": "highlight"
+            })
             
-        elif not tem_colegiado and verbo == "resolveu":
-            erros.append({"mensagem": "Sem 'Colegiado', use 'resolve'.",
-                          "original": match_fecho.group(0),
-                          "span": match_fecho.span(),
-                          "tipo": "highlight"})
     else:
-        erros.append({"mensagem": "Fecho 'resolve:' não encontrado.", "original": texto_completo[:50], "tipo": "alert"})
+        erros.append({
+            "mensagem": "Fecho 'resolve:' não encontrado no final do preâmbulo.", 
+            "original": texto_completo[:50], 
+            "tipo": "alert"
+        })
+        
     return erros
+
+def auditar_verbo_primeiro_artigo(texto_completo):
+    """
+    Verifica se o Art. 1º começa com verbo no presente do indicativo (Aprova, Altera),
+    e não no infinitivo (Aprovar, Alterar).
+    """
+    # Regex: Procura 'Art. 1' (com qualquer símbolo) e captura a primeira palavra depois dele
+    match = re.search(r'^\s*Art\.\s*1[º°ᵒ\.]\s+([A-Za-zÇçÁ-Úá-ú]+)', texto_completo, re.MULTILINE)
+    
+    if not match:
+        # Se não achou Art. 1º, deixa quieto (outra regra avisa que falta artigo)
+        return {"status": "OK", "detalhe": "Art. 1º não localizado para análise de verbo."}
+    
+    palavra_encontrada = match.group(1)
+    span_palavra = match.span(1)
+    
+    # Mapa de correções comuns (Infinitivo -> Presente)
+    correcoes = {
+        "Aprovar": "Aprova",
+        "Alterar": "Altera",
+    }
+    
+    # 1. Verifica se está na lista de erros comuns
+    if palavra_encontrada in correcoes:
+        sugestao = correcoes[palavra_encontrada]
+        return {
+            "status": "FALHA",
+            "detalhe": {
+                "mensagem": f"O Art. 1º deve começar com o verbo no presente ('{sugestao}'), evite o infinitivo.",
+                "original": palavra_encontrada,
+                "span": span_palavra,
+                "tipo": "highlight"
+            }
+        }
+        
+    verbos_validos = list(correcoes.values()) + ["Fica", "Torna"]
+    
+    if palavra_encontrada not in verbos_validos:
+        
+        pass
+
+    return {"status": "OK", "detalhe": "Verbo do Art. 1º correto."}
 
 def auditar_fecho_vigencia(texto_completo):
     if "Esta Resolução entra em vigor" not in texto_completo:
