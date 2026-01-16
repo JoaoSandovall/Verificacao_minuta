@@ -67,14 +67,9 @@ def auditar_formatacao_paragrafo(texto_completo):
     """
     Valida Parágrafos (§ 1º, § 10., Parágrafo único.).
     """
+    
     erros = []
     
-    # --- PARÁGRAFOS NUMERADOS (§) ---
-    # Grupo 1: Indentação
-    # "§" literal
-    # Espaços
-    # Grupo 2: Número
-    # Grupo 3: Sujeira (pontos, graus, espaços)
     padrao_num = re.compile(r'^(\s*)§\s+(\d+)([\. \tº°ᵒ]*)', re.MULTILINE)
     
     for match in padrao_num.finditer(texto_completo):

@@ -69,7 +69,7 @@ def obter_regras(texto_completo):
         
     elif tipo == "COARIDE":
         regras["Epígrafe (COARIDE)"] = coaride.auditar_epigrafe_coaride
-        regras["Preâmbulo (COARIDE)"] = coaride.auditar_preambulo_coarides
+        regras["Preâmbulo (COARIDE)"] = coaride.auditar_preambulo_coaride
         
     elif tipo == "CNRH":        
         regras["Cabeçalho (MINISTÉRIO/CONSELHO)"] = cnrh.auditar_cabecalho_cnrh

@@ -54,23 +54,18 @@ def auditar_ementa(texto):
     
     for i, linha in enumerate(linhas):
         linha_limpa = linha.strip()
-        if not linha_limpa: continue # Pula vazias
+        if not linha_limpa: continue
 
-        # 1. Pula Cabeçalhos/Epígrafes conhecidos
         if re.match(r'^(MINISTÉRIO|SUPERINTENDÊNCIA|CONSELHO|MINUTA|RESOLUÇÃO|PORTARIA|DECRETO|ATO)', linha_limpa, re.IGNORECASE):
             continue
         
-        # 2. Pula linhas totalmente MAIÚSCULAS (provavelmente cabeçalhos extras)
         letras = [c for c in linha_limpa if c.isalpha()]
         if letras and all(c.isupper() for c in letras):
             continue
 
-        # 3. Se chegou no Preâmbulo ou Artigo, paramos (Ementa não achada antes)
         if re.match(r'^(O PRESIDENTE|A DIRETORIA|Art\.|Artigo)', linha_limpa, re.IGNORECASE):
             break
-            
-        # 4. Se sobreviveu, É A EMENTA!
-        # Precisamos achar a posição original no texto para o span
+
         match_regex = re.search(re.escape(linha_limpa), texto)
         if match_regex:
             match_ementa = match_regex
@@ -115,7 +110,6 @@ def verificar_fecho_preambulo(texto_completo):
         verbo_encontrado = match_fecho.group(1) # Captura a palavra (ex: Resolve, resolveu, RESOLVEU)
         texto_completo_match = match_fecho.group(0) # Captura com os dois pontos (ex: resolveu:)
         
-        # A regra é estrita: tem que ser exatamente "resolve" (minúsculo e sem 'u')
         if verbo_encontrado != "resolve":
             erros.append({
                 "mensagem": "O fecho deve ser apenas 'resolve:' (em minúsculo).",
