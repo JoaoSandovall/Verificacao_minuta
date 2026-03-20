@@ -47,9 +47,8 @@ def auditar_epigrafe_condel(texto_completo):
                 "detalhe": {
                     "mensagem": "A epígrafe deve estar totalmente em MAIÚSCULAS.",
                     "original": conteudo,
-                    "sugestao": conteudo.upper(),
                     "span": match.span(),
-                    "tipo": "fixable"
+                    "tipo": "highlight"
                 }
             }
         return {"status": "OK", "detalhe": "Epígrafe correta."}
