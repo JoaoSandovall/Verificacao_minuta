@@ -27,7 +27,6 @@ def auditar_epigrafe(texto_completo, regex_compilado, msgs_erro_personalizadas=N
         return {"status": "FALHA", "detalhe": msgs_erro_personalizadas}
     
     texto_epigrafe = match.group(0)
-    # Verifica maiúsculas ignorando 'Minuta de'
     
     texto_limpo = re.sub(r'[^A-Za-zÇçÁ-Úá-ú]', '', texto_epigrafe)
     
@@ -45,9 +44,6 @@ def auditar_epigrafe(texto_completo, regex_compilado, msgs_erro_personalizadas=N
     return {"status": "OK", "detalhe": "Epígrafe correta."}
 
 def auditar_ementa(texto):
-    """
-    Localiza a Ementa lendo linha por linha, descartando o que não é.
-    """
     linhas = texto.split('\n')
     
     match_ementa = None
@@ -73,8 +69,7 @@ def auditar_ementa(texto):
     
     if not match_ementa:
         return {"status": "ALERTA", "detalhe": "Ementa não localizada."}
-
-    # Validação do Verbo
+    
     texto_ementa = match_ementa.group(0)
     span_ementa = match_ementa.span()
     primeira_palavra = texto_ementa.split(' ')[0]
@@ -101,14 +96,13 @@ def auditar_ementa(texto):
     return {"status": "OK", "detalhe": "Ementa válida."}
 
 def verificar_fecho_preambulo(texto_completo):
-    # Procura por "resolve" ou "resolveu" seguido de dois pontos, ignorando maiúsculas na busca
     match_fecho = re.search(r"(resolveu?)\s*:", texto_completo, re.IGNORECASE)
     
     erros = []
     
     if match_fecho:
-        verbo_encontrado = match_fecho.group(1) # Captura a palavra (ex: Resolve, resolveu, RESOLVEU)
-        texto_completo_match = match_fecho.group(0) # Captura com os dois pontos (ex: resolveu:)
+        verbo_encontrado = match_fecho.group(1)
+        texto_completo_match = match_fecho.group(0)
         
         if verbo_encontrado != "resolve":
             erros.append({
@@ -128,27 +122,19 @@ def verificar_fecho_preambulo(texto_completo):
     return erros
 
 def auditar_verbo_primeiro_artigo(texto_completo):
-    """
-    Verifica se o Art. 1º começa com verbo no presente do indicativo (Aprova, Altera),
-    e não no infinitivo (Aprovar, Alterar).
-    """
-    # Regex: Procura 'Art. 1' (com qualquer símbolo) e captura a primeira palavra depois dele
     match = re.search(r'^\s*Art\.\s*1[º°ᵒ\.]\s+([A-Za-zÇçÁ-Úá-ú]+)', texto_completo, re.MULTILINE)
     
     if not match:
-        # Se não achou Art. 1º, deixa quieto (outra regra avisa que falta artigo)
         return {"status": "OK", "detalhe": "Art. 1º não localizado para análise de verbo."}
     
     palavra_encontrada = match.group(1)
     span_palavra = match.span(1)
     
-    # Mapa de correções comuns (Infinitivo -> Presente)
     correcoes = {
         "Aprovar": "Aprova",
         "Alterar": "Altera",
     }
-    
-    # 1. Verifica se está na lista de erros comuns
+
     if palavra_encontrada in correcoes:
         sugestao = correcoes[palavra_encontrada]
         return {

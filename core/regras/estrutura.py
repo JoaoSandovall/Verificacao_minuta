@@ -2,10 +2,7 @@ import re
 from core.utils import _roman_to_int
 
 def auditar_formatacao_artigos(texto_completo):
-    """
-    Valida formatação de Artigos (Art. 1º / Art. 10.).
-    Usa Regex expandido para capturar pontuação incorreta no próprio match.
-    """
+    
     erros = []
     
     padrao = re.compile(r'^(\s*)Art\.\s*(\d+)([\. \tº°ᵒ]*)', re.MULTILINE)
@@ -20,22 +17,18 @@ def auditar_formatacao_artigos(texto_completo):
         msgs_erro = []
         correcao = None
         
-        # Caso 1: Artigos Ordinais (1 ao 9) -> Esperado: "Art. Xº  "
         if 1 <= numero <= 9:
-            # Verifica se tem o símbolo 'ᵒ' (ordinal correto)
             if 'º' not in sujeira:
                 if any(x in sujeira for x in ['ᵒ', '°']): msgs_erro.append("símbolo incorreto (use 'º')")
                 elif '.' in sujeira: msgs_erro.append("uso de ponto final (use 'º')")
                 else: msgs_erro.append("ausência de indicador ordinal")
             
-            # Verifica espaçamento (deve terminar com 2 espaços)
             if not sujeira.endswith('  '): 
                 msgs_erro.append("espaçamento incorreto (esperado 2 espaços após o símbolo)")
                 
             if msgs_erro:
                 correcao = f"{indentacao}Art. {numero}º  "
 
-        # Caso 2: Artigos Cardinais (10 em diante) -> Esperado: "Art. X.  "
         elif numero >= 10:
             if '.' not in sujeira:
                 if any(x in sujeira for x in ['º', '°', 'ᵒ']): msgs_erro.append("uso de ordinal (use ponto final)")
@@ -64,9 +57,6 @@ def auditar_formatacao_artigos(texto_completo):
 
 
 def auditar_formatacao_paragrafo(texto_completo):
-    """
-    Valida Parágrafos (§ 1º, § 10., Parágrafo único.).
-    """
     
     erros = []
     
@@ -116,8 +106,6 @@ def auditar_formatacao_paragrafo(texto_completo):
                 "tipo": "fixable"
             })
 
-    # --- PARÁGRAFO ÚNICO ---
-    # Captura a indentação (G1) e os espaços depois do ponto (G2)
     padrao_unico = re.compile(r'^(\s*)Parágrafo\s+único\.([ \t]*)', re.MULTILINE | re.IGNORECASE)
     
     for match in padrao_unico.finditer(texto_completo):
@@ -125,7 +113,6 @@ def auditar_formatacao_paragrafo(texto_completo):
         espacos_pos = match.group(2)
         texto_capturado = match.group(0)
         
-        # A regra diz que deve haver exatamente dois espaços após o ponto
         if espacos_pos != "  ":
             erros.append({
                 "mensagem": "Após 'Parágrafo único.', deve haver dois espaços.",
@@ -156,13 +143,9 @@ def auditar_data(texto_completo):
     return {"status": "OK", "detalhe": "Datas corretas."}
 
 def auditar_uso_siglas(texto_completo):
-    """
-    Verifica o uso de siglas.
-    Regra: Siglas devem ser introduzidas por travessão (—), evitando parênteses ou hífens.
-    """
+    
     erros = []
     
-    # --- CASO 1: Sigla entre Parênteses ---
     regex_parenteses = re.compile(r"(\()([A-Z]{3,})(\))") 
     
     for match in regex_parenteses.finditer(texto_completo):
@@ -178,7 +161,6 @@ def auditar_uso_siglas(texto_completo):
             "tipo": "highlight"
         })
 
-    # --- CASO 2: Sigla com Hífen Comum ---
     regex_hifen = re.compile(r"(\s+-\s*)([A-Z]{3,})\b")
     
     for match in regex_hifen.finditer(texto_completo):
@@ -200,11 +182,9 @@ def auditar_uso_siglas(texto_completo):
     return {"status": "OK", "detalhe": "Uso de siglas correto."}
 
 def auditar_pontuacao_incisos(texto_completo):
-    """
-    Verifica APENAS a pontuação final (; ou .).
-    Substitui a antiga auditar_formatacao_incisos.
-    """
+    
     erros = []
+    
     padrao = re.compile(r'(^[ \t]*[IVXLCDM]+\s*[\-–—].*?)(?=\n\s*(?:[IVXLCDM]+\s*[\-–—]|Art\.|§|CAPÍTULO|Seção|Parágrafo|ANEXO)|$)', re.MULTILINE | re.DOTALL)
     
     matches = list(padrao.finditer(texto_completo))
@@ -216,13 +196,11 @@ def auditar_pontuacao_incisos(texto_completo):
         texto = raw_text.strip()
         numeral = re.match(r'^\s*([IVXLCDM]+)', texto).group(1)
         
-        # Cálculo de Span Justo
         offset_inicio = raw_text.find(texto)
         if offset_inicio == -1: offset_inicio = 0
         start_index = match.start(1) + offset_inicio
         span_justo = (start_index, start_index + len(texto))
         
-        # Analisa o contexto (o que vem depois)
         pos_fim = match.end()
         prox = texto_completo[pos_fim:pos_fim+200].lstrip()
         is_last = True
@@ -253,10 +231,7 @@ def auditar_pontuacao_incisos(texto_completo):
     return {"status": "FALHA", "detalhe": erros}
 
 def auditar_sequencia_incisos(texto_completo):
-    """
-    Verifica APENAS a numeração romana (I, II, III...).
-    """
-    
+
     erros = []
     
     padrao = re.compile(r'(?:^|[\n\r;])\s*([IVXLCDM]+\s*[\-–—])', re.MULTILINE)
@@ -317,7 +292,9 @@ def auditar_sequencia_incisos(texto_completo):
     return {"status": "FALHA", "detalhe": erros}
 
 def auditar_formatacao_alineas(texto_completo):
+
     erros = []
+    
     padrao = re.compile(r'(^\s*[a-z]\).*?)(?=\n\s*(?:[a-z]\)|[IVXLCDM]+\s*[\-–—]|Art\.|§|CAPÍTULO)|$)', re.MULTILINE | re.DOTALL)
     
     matches = list(padrao.finditer(texto_completo))
@@ -339,7 +316,6 @@ def auditar_formatacao_alineas(texto_completo):
         trecho_contexto = texto[:60] + "..." 
         ord_letra = ord(letra)
         
-        # Validação de Sequência
         if letra != 'a' and i > 0:
             prev = matches[i-1].group(1).strip()
             gap = texto_completo[matches[i-1].end():match.start()]
@@ -361,7 +337,6 @@ def auditar_formatacao_alineas(texto_completo):
         elif re.match(r'(Art\.|§|CAPÍTULO|Seção|ANEXO)', prox) or not prox: is_final = True
         else: is_final = True
         
-        # Validação de Pontuação
         if is_final:
             if not texto.endswith('.'):
                 erros.append({

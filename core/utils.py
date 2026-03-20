@@ -1,7 +1,6 @@
 import re
 
 def _roman_to_int(s):
-    """Função auxiliar para converter numerais romanos em inteiros."""
     roman_map = {'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000}
     result = 0
     prev_value = 0
@@ -15,7 +14,6 @@ def _roman_to_int(s):
     return result
 
 def _normalizar(texto):
-    # Remove espaços extras, e usa o uppper para transformar em maiusculo
     if not texto:
         return ""
     return " ".join(texto.split()).upper()
@@ -33,5 +31,4 @@ def _calcular_trecho_sujo(texto_completo, pos_inicio_match, pos_fim_match):
 
 def limpar_para_validar(t):
         if not t: return ""
-        # Remove tudo que não for letra ou número (ignora traços, pontos, barras)
         return re.sub(r'[^A-Z0-9]', '', t.upper())

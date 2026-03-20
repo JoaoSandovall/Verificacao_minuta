@@ -105,7 +105,6 @@ def processar_minuta(texto_bruto: str):
     if not texto_completo.strip(): return {"html": "", "erros": [], "tipo_documento": "N/A"}
 
     texto_analise = texto_completo
-    # Limpeza segura (não apaga \n)
     texto_analise = re.sub(r'^[\s\*]*MINUTA DE DOCUMENTO[^\n]*', substituir_por_espacos, texto_analise, flags=re.IGNORECASE | re.MULTILINE)
     texto_analise = re.sub(r'(MINUTA\s+(?:DE\s+)?)(RESOLUÇÃO|PORTARIA)', substituir_prefixo_minuta, texto_analise, flags=re.IGNORECASE)
     texto_analise = re.sub(r'Minuta\s+assinada\s+para\s+fins\s+de\s+visualização', substituir_por_espacos, texto_analise, flags=re.IGNORECASE)

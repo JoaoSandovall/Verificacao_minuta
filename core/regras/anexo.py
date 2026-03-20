@@ -83,15 +83,12 @@ def auditar_sequencia_secoes_anexo(texto_completo):
 def auditar_sequencia_artigos_anexo(texto_completo):
     erros = []
     
-    # 1. Encontra todos os artigos e guarda em uma lista para podermos acessar o próximo (i+1)
     matches = list(re.finditer(r'Art\.\s*(\d+)', texto_completo))
     
     if not matches: 
         return {"status": "OK", "detalhe": "Nenhum Artigo encontrado no Anexo para análise de sequência."}
     
     expected_num = 1
-    
-    # Verificação especial do primeiro artigo
     primeiro_match = matches[0]
     primeiro_numero = int(primeiro_match.group(1))
     
@@ -104,29 +101,23 @@ def auditar_sequencia_artigos_anexo(texto_completo):
         })
         expected_num = primeiro_numero
     
-    # Loop pela lista usando índice para poder olhar para frente
     for i in range(len(matches)):
         match = matches[i]
         num = int(match.group(1))
         texto_artigo = match.group(0)
         
         if num != expected_num:
-            # Olhada à frente (Lookahead): Qual é o próximo número real?
             proximo_match = matches[i+1] if i + 1 < len(matches) else None
             
             eh_erro_isolado = True
             
             if proximo_match:
                 prox_num_real = int(proximo_match.group(1))
-                # Se o próximo número real for igual ao (número atual errado + 1),
-                # então a sequência mudou de verdade (ex: 1, 2, 10, 11...).
+                
                 if prox_num_real == num + 1:
                     eh_erro_isolado = False
 
             if eh_erro_isolado:
-                # Caso: 29, 20, 31.
-                # O 20 é um erro isolado. O próximo (31) bate com o esperado antigo (30+1).
-                # Ação: Marcamos o erro, mas NÃO atualizamos o expected_num para 20.
                 erros.append({
                     "mensagem": f"Numeração fora de sequência. Esperado 'Art. {expected_num}', mas encontrado 'Art. {num}'.",
                     "original": texto_artigo,
@@ -143,7 +134,6 @@ def auditar_sequencia_artigos_anexo(texto_completo):
                 })
                 expected_num = num
 
-        # Incrementa o esperado para a próxima volta
         expected_num += 1
 
     if not erros: 
@@ -152,12 +142,9 @@ def auditar_sequencia_artigos_anexo(texto_completo):
     return {"status": "FALHA", "detalhe": erros}
 
 def auditar_sequencia_paragrafos_anexo(texto_completo):
+    
     erros = []
     
-    # Regex Combinado:
-    # 1. Artigo: Captura 'Art. X' no INÍCIO da linha (com espaços opcionais antes)
-    # 2. Parágrafo: Captura '§ X' no INÍCIO da linha (com espaços opcionais antes)
-    # O uso de ^ (start of line) e flag MULTILINE é essencial para ignorar citações no meio do texto.
     regex_combinado = r'(?P<artigo>^\s*Art\.\s*\d+)|(?P<paragrafo>^\s*§\s*(?P<num>\d+))'
     
     matches = list(re.finditer(regex_combinado, texto_completo, re.MULTILINE | re.IGNORECASE))
@@ -170,25 +157,22 @@ def auditar_sequencia_paragrafos_anexo(texto_completo):
     for i in range(len(matches)):
         match = matches[i]
         
-        # --- CASO 1: Encontrou um ARTIGO ---
         if match.group('artigo'):
             expected_num = 1
             continue
             
-        # --- CASO 2: Encontrou um PARÁGRAFO (§) ---
         if match.group('paragrafo'):
             num = int(match.group('num'))
             texto_par = match.group('paragrafo').strip()
             
             if num != expected_num:
-                # Lógica de Lookahead (Olhar à frente)
+                
                 proximo_match_par = None
                 
-                # Varre os próximos matches para achar o próximo § do MESMO artigo
                 for j in range(i + 1, len(matches)):
                     m_futuro = matches[j]
                     if m_futuro.group('artigo'): 
-                        break # Achou artigo novo, parou de olhar
+                        break
                     if m_futuro.group('paragrafo'):
                         proximo_match_par = m_futuro
                         break
@@ -201,16 +185,14 @@ def auditar_sequencia_paragrafos_anexo(texto_completo):
                         eh_erro_isolado = False
                 
                 if eh_erro_isolado:
-                     # Erro isolado (ex: sequencia 1, 5, 2). O 5 está errado.
                      erros.append({
                         "mensagem": f"Numeração de parágrafo fora de sequência. Esperado '§ {expected_num}', mas encontrado '§ {num}'.",
                         "original": texto_par,
                         "span": match.span(),
                         "tipo": "highlight"
                     })
-                    # Não atualiza expected_num
+                     
                 else:
-                    # Salto de sequência (ex: 1, 5, 6). Aceita o salto.
                     erros.append({
                         "mensagem": f"Salto na numeração de parágrafos. Esperado '§ {expected_num}', mas encontrado '§ {num}'.",
                         "original": texto_par,
