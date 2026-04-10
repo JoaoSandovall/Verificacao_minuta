@@ -372,7 +372,6 @@ def auditar_simbolo_ordinal(texto_completo):
         erros.append({
             "mensagem": "Símbolo de pontuação incorreto. Utilize o indicador ordinal (º) ao invés do símbolo de grau (°) ou letra (ᵒ).",
             "original": texto_errado,
-            "sugestao": texto_corrigido,
             "span": match.span(1),
             "tipo": "highlight"
         })
