@@ -1,16 +1,8 @@
 import re
 from core.regras import resolucao
-from core.utils import limpar_para_validar
+from core.utils import limpar_para_validar, is_totalmente_maiusculo
 
 def auditar_cabecalho_condel(texto_completo):
-    """
-    Verifica o cabeçalho do condel:
-    
-    MINISTÉRIO DA INTEGRAÇÃO E DO DESENVOLVIMENTO REGIONAL
-    SUPERINTENDÊNCIA DO DESENVOLVIMENTO DO ....
-    CONSELHO DELIBERATIVO
-    
-    """
     
     linhas = [l.strip() for l in texto_completo.strip().split('\n') if l.strip()]
     
@@ -39,9 +31,7 @@ def auditar_epigrafe_condel(texto_completo):
         
         conteudo = match.group(0)
         
-        limpo = re.sub(r'[^A-Za-z]', '', conteudo)
-        
-        if not limpo.isupper():
+        if not is_totalmente_maiusculo(conteudo):
             return {
                 "status": "FALHA",
                 "detalhe": {
@@ -55,9 +45,7 @@ def auditar_epigrafe_condel(texto_completo):
     return {"status": "ALERTA", "detalhe": "Padrão 'RESOLUÇÃO CONDEL... Nᵒ' não encontrado."}
 
 def auditar_preambulo_condel(texto_completo):
-    """
-    Autoridades corretas para começar o preambulo
-    """
+    
     autoridades_map = {
         "SUDECO": "O PRESIDENTE DO CONSELHO DELIBERATIVO DO DESENVOLVIMENTO DO CENTRO-OESTE — CONDEL/SUDECO",
         "SUDAM": "O PRESIDENTE DO CONSELHO DELIBERATIVO DO DESENVOLVIMENTO DA AMAZÔNIA — CONDEL/SUDAM",
@@ -94,8 +82,7 @@ def auditar_preambulo_condel(texto_completo):
                     "tipo": "highlight"
                 })
             else:
-                apenas_letras = re.sub(r'[^A-Za-zÀ-Úá-ú]', '', texto_encontrado)
-                if not apenas_letras.isupper():
+                if not is_totalmente_maiusculo(texto_encontrado):
                     erros.append({
                         "mensagem": "O preâmbulo deve estar totalmente em MAIÚSCULAS.",
                         "original": texto_encontrado,
@@ -112,7 +99,6 @@ def auditar_preambulo_condel(texto_completo):
     else:
         erros.append("Início do preâmbulo ('O PRESIDENTE DO CONSELHO...') não encontrado.")
      
-    # Verifica o fecho do preâmbulo (resolve/resolveu)
     erros_fecho = resolucao.verificar_fecho_preambulo(texto_completo)
     if erros_fecho: erros.extend(erros_fecho)
 

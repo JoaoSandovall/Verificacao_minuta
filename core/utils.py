@@ -32,3 +32,9 @@ def _calcular_trecho_sujo(texto_completo, pos_inicio_match, pos_fim_match):
 def limpar_para_validar(t):
         if not t: return ""
         return re.sub(r'[^A-Z0-9]', '', t.upper())
+
+def is_totalmente_maiusculo(texto: str) -> bool:
+
+    if not texto: return False
+    apenas_letras = re.sub(r'[^A-Za-zÀ-Úá-úÇç]', '', texto)
+    return apenas_letras.isupper() if apenas_letras else False
