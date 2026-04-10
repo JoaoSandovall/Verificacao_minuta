@@ -356,3 +356,28 @@ def auditar_formatacao_alineas(texto_completo):
 
     if not erros: return {"status": "OK", "detalhe": "Alíneas corretas."}
     return {"status": "FALHA", "detalhe": erros[:50]}
+
+def auditar_simbolo_ordinal(texto_completo):
+    erros = []
+
+    padrao = re.compile(r'(\S*[°ᵒ]\S*)')
+    
+    matches = list(padrao.finditer(texto_completo))
+    
+    for match in matches:
+        texto_errado = match.group(1)
+        
+        texto_corrigido = texto_errado.replace('°', 'º').replace('ᵒ', 'º')
+        
+        erros.append({
+            "mensagem": "Símbolo de pontuação incorreto. Utilize o indicador ordinal (º) ao invés do símbolo de grau (°) ou letra (ᵒ).",
+            "original": texto_errado,
+            "sugestao": texto_corrigido,
+            "span": match.span(1),
+            "tipo": "highlight"
+        })
+
+    if not erros: 
+        return {"status": "OK", "detalhe": "Símbolos ordinais corretos."}
+        
+    return {"status": "FALHA", "detalhe": erros}

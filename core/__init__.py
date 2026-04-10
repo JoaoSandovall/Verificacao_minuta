@@ -27,6 +27,7 @@ def obter_regras_anexo():
         "Anexo: Sequência de Artigos": anexo.auditar_sequencia_artigos_anexo,
         "Anexo: Sequência de Parágrafos": anexo.auditar_sequencia_paragrafos_anexo,
         "Anexo: Pontuação Hierárquica": anexo.auditar_pontuacao_hierarquica_anexo,
+        "Símbolos Ordinais (º)": estrutura.auditar_simbolo_ordinal,
         "Artigos (Formato)": estrutura.auditar_formatacao_artigos,
         "Parágrafos (Espaçamento)": estrutura.auditar_formatacao_paragrafo,
         "Siglas": estrutura.auditar_uso_siglas,
@@ -46,7 +47,7 @@ def obter_regras(texto_completo):
         "Verbo Art. 1º": resolucao.auditar_verbo_primeiro_artigo,
         "Assinatura": resolucao.auditar_assinatura,
         "Vigência": resolucao.auditar_fecho_vigencia,
-        # Regras de Formatação GERAL
+        "Símbolos Ordinais (º)": estrutura.auditar_simbolo_ordinal,
         "Artigos": estrutura.auditar_formatacao_artigos,
         "Parágrafos": estrutura.auditar_formatacao_paragrafo,
         "Datas": estrutura.auditar_data,
