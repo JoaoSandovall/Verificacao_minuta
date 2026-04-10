@@ -30,39 +30,73 @@ function voltarEditor() {
 }
 
 async function analisarTexto() {
-    let textoParaEnviar = "";
+    console.log("Iniciando análise... Modo arquivo:", modoArquivo);
+    let configFetch = {};
+
     if (modoArquivo) {
-        alert("Para testar, por favor copie e cole o texto na aba 'Colar Texto'.");
-        return;
+        const inputArquivo = document.getElementById('input-arquivo');
+        console.log("Arquivos detectados:", inputArquivo.files);
+
+        if (!inputArquivo || inputArquivo.files.length === 0) {
+            alert("Por favor, selecione um arquivo primeiro.");
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append("arquivo", inputArquivo.files[0]);
+
+        configFetch = {
+            url: API_URL + "/arquivo",
+            options: {
+                method: "POST",
+                body: formData 
+            }
+        };
     } else {
-        textoParaEnviar = document.getElementById('input-texto').value;
+        const textoParaEnviar = document.getElementById('input-texto').value;
+        if (!textoParaEnviar.trim()) { alert("O texto está vazio."); return; }
+
+        configFetch = {
+            url: API_URL,
+            options: {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ texto: textoParaEnviar })
+            }
+        };
     }
 
-    if (!textoParaEnviar.trim()) { alert("O texto está vazio."); return; }
-
     const btn = document.querySelector('.btn-primario');
-    const textoOriginal = btn.innerText;
     btn.innerText = "⏳ Analisando...";
     btn.disabled = true;
 
     try {
-        const response = await fetch(API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ texto: textoParaEnviar })
-        });
-        if (!response.ok) throw new Error("Erro na API");
+        console.log("Enviando requisição para:", configFetch.url);
+        const response = await fetch(configFetch.url, configFetch.options);
+        
+        console.log("Resposta recebida. Status:", response.status);
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || "Erro no processamento do servidor");
+        }
+        
         const data = await response.json();
+        console.log("Dados recebidos com sucesso:", data);
         
         ultimosDados = data;
+
+        if (modoArquivo && data.texto_extraido) {
+            document.getElementById('input-texto').value = data.texto_extraido;
+        }
         
         renderizarResultado(data);
         mostrarRevisao();
     } catch (error) {
-        console.error(error);
-        alert("Erro ao conectar com o servidor.");
+        console.error("ERRO NA ANÁLISE:", error);
+        alert("Erro na análise: " + error.message);
     } finally {
-        btn.innerText = textoOriginal;
+        btn.innerText = "🚀 Analisar Documento";
         btn.disabled = false;
     }
 }
@@ -209,5 +243,18 @@ function corrigirTudoAutomaticamente() {
         alert(`Sucesso! ${correcoesAplicadas} correções aplicadas.`);
     } else {
         alert("Não foi possível aplicar as correções. O texto pode ter sido alterado manualmente após a análise ou há um desalinhamento de índices. Tente clicar em 'Analisar' novamente antes de corrigir.");
+    }
+}
+
+function atualizarNomeArquivo() {
+    const input = document.getElementById('input-arquivo');
+    const nomeArquivoDisplay = document.getElementById('nome-arquivo');
+    
+    if (input.files.length > 0) {
+        nomeArquivoDisplay.innerHTML = `<span style="color: #007bff; font-weight: 600;">📄 Arquivo selecionado:</span> <br> ${input.files[0].name}`;
+        
+        analisarTexto();
+    } else {
+        nomeArquivoDisplay.innerHTML = "Clique aqui para selecionar um arquivo (.pdf ou .docx)";
     }
 }

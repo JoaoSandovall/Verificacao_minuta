@@ -30,9 +30,12 @@
                     </div>
 
                     <div id="tab-arquivo" class="tab-content">
-                        <div class="upload-area" id="drop-zone">
-                            <p>Upload de arquivo em breve.</p>
-                            <button class="btn-secundario">Selecionar Arquivo</button>
+                        <div class="upload-area" id="drop-zone" onclick="document.getElementById('input-arquivo').click()" style="cursor: pointer;">
+                            <p id="nome-arquivo">Clique aqui para selecionar um arquivo (.pdf ou .docx)</p>
+                            
+                            <input type="file" id="input-arquivo" accept=".pdf, .docx" style="display: none;" onchange="atualizarNomeArquivo()">
+                            
+                            <button type="button" class="btn-secundario" style="pointer-events: none;">Selecionar Arquivo</button>
                         </div>
                     </div>
 

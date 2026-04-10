@@ -4,3 +4,4 @@ pydantic
 python-docx
 PyPDF2
 pandas
+python-multipart

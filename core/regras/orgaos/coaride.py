@@ -1,6 +1,6 @@
 import re
 from core.regras import resolucao
-from core.utils import is_totalmente_maiusculo
+from core.utils import limpar_para_validar, is_totalmente_maiusculo
 
 def auditar_epigrafe_coaride(texto_completo):
     
@@ -18,7 +18,7 @@ def auditar_epigrafe_coaride(texto_completo):
             return {
                 "status": "FALHA",
                 "detalhe": {
-                    "mensagem": "Epígrafe deve conter a sigla 'COARIDE'.",
+                    "mensagem": "Epígrafe deve conter a sigla 'COARIDE' ou 'COARIDE/SUDECO'.",
                     "original": texto_encontrado,
                     "span": span,
                     "tipo": "highlight"
@@ -40,9 +40,13 @@ def auditar_epigrafe_coaride(texto_completo):
 
     return {"status": "ALERTA", "detalhe": "Epígrafe COARIDE não encontrada."}
 
+
 def auditar_preambulo_coaride(texto_completo):
 
-    autoridade_esperada = "O PRESIDENTE DO CONSELHO ADMINISTRATIVO DA REGIÃO INTEGRADA DE DESENVOLVIMENTO DO DISTRITO FEDERAL E ENTORNO — COARIDE/SUDECO"
+    autoridades_esperadas = [
+        "O PRESIDENTE DO CONSELHO ADMINISTRATIVO DA REGIÃO INTEGRADA DE DESENVOLVIMENTO DO DISTRITO FEDERAL E ENTORNO — COARIDE",
+        "O PRESIDENTE DO CONSELHO ADMINISTRATIVO DA REGIÃO INTEGRADA DE DESENVOLVIMENTO DO DISTRITO FEDERAL E ENTORNO — COARIDE/SUDECO"
+    ]
 
     match = re.search(
         r"(O PRESIDENTE DO CONSELHO ADMINISTRATIVO.*?)(?=\s*,|\s+no uso)", 
@@ -51,17 +55,17 @@ def auditar_preambulo_coaride(texto_completo):
     )
 
     if match:
-        
         texto_encontrado = match.group(1).strip()
         span = match.span(1)
-        texto_norm = re.sub(r'\s+', ' ', texto_encontrado).upper()
-        esperado_norm = re.sub(r'\s+', ' ', autoridade_esperada).upper()
+        
+        texto_limpo = limpar_para_validar(texto_encontrado)
+        esperados_limpos = [limpar_para_validar(auth) for auth in autoridades_esperadas]
 
-        if texto_norm != esperado_norm:
+        if texto_limpo not in esperados_limpos:
             return {
                 "status": "FALHA",
                 "detalhe": {
-                    "mensagem": "Autoridade incorreta para COARIDE.<br>Verifique a grafia e a sigla (COARIDE/SUDECO).",
+                    "mensagem": "Autoridade incorreta para COARIDE.<br>Verifique a grafia e a sigla (use apenas COARIDE ou COARIDE/SUDECO).",
                     "original": texto_encontrado,
                     "span": span,
                     "tipo": "highlight"
