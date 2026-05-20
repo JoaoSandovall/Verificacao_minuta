@@ -1,5 +1,12 @@
 import re
 
+# --- COMPILAÇÃO GLOBAL DE EXPRESSÕES REGULARES ---
+REGEX_EMENTA_IGNORAR = re.compile(r'^(MINISTÉRIO|SUPERINTENDÊNCIA|CONSELHO|MINUTA|RESOLUÇÃO|PORTARIA|DECRETO|ATO)', re.IGNORECASE)
+REGEX_EMENTA_PARADA = re.compile(r'^(O PRESIDENTE|A DIRETORIA|Art\.|Artigo)', re.IGNORECASE)
+REGEX_FECHO_PREAMBULO = re.compile(r"(?:o\s+colegiado\s+)?resolveu?\s*:", re.IGNORECASE)
+REGEX_VERBO_ART1 = re.compile(r'^\s*Art\.\s*1[º°ᵒ\.]\s+([A-Za-zÇçÁ-Úá-ú]+)', re.MULTILINE)
+REGEX_ANEXO_ASSINATURA = re.compile(r'\n\s*ANEXO', re.IGNORECASE)
+
 def auditar_cabecalho(texto_completo):
     
     padrao_base = "MINISTÉRIO DA INTEGRAÇÃO E DO DESENVOLVIMENTO REGIONAL"
@@ -52,14 +59,14 @@ def auditar_ementa(texto):
         linha_limpa = linha.strip()
         if not linha_limpa: continue
 
-        if re.match(r'^(MINISTÉRIO|SUPERINTENDÊNCIA|CONSELHO|MINUTA|RESOLUÇÃO|PORTARIA|DECRETO|ATO)', linha_limpa, re.IGNORECASE):
+        if REGEX_EMENTA_IGNORAR.match(linha_limpa):
             continue
         
         letras = [c for c in linha_limpa if c.isalpha()]
         if letras and all(c.isupper() for c in letras):
             continue
 
-        if re.match(r'^(O PRESIDENTE|A DIRETORIA|Art\.|Artigo)', linha_limpa, re.IGNORECASE):
+        if REGEX_EMENTA_PARADA.match(linha_limpa):
             break
 
         match_regex = re.search(re.escape(linha_limpa), texto)
@@ -97,7 +104,7 @@ def auditar_ementa(texto):
 
 def verificar_fecho_preambulo(texto_completo):
     
-    match_fecho = re.search(r"(?:o\s+colegiado\s+)?resolveu?\s*:", texto_completo, re.IGNORECASE)
+    match_fecho = REGEX_FECHO_PREAMBULO.search(texto_completo)
     
     erros = []
     
@@ -108,8 +115,9 @@ def verificar_fecho_preambulo(texto_completo):
             erros.append({
                 "mensagem": "O fecho do preâmbulo deve ser exatamente 'o Colegiado resolve:'.",
                 "original": texto_encontrado,
+                "sugestao": "o Colegiado resolve:",
                 "span": match_fecho.span(),
-                "tipo": "highlight"
+                "tipo": "fixable"
             })
             
     else:
@@ -122,7 +130,7 @@ def verificar_fecho_preambulo(texto_completo):
     return erros
 
 def auditar_verbo_primeiro_artigo(texto_completo):
-    match = re.search(r'^\s*Art\.\s*1[º°ᵒ\.]\s+([A-Za-zÇçÁ-Úá-ú]+)', texto_completo, re.MULTILINE)
+    match = REGEX_VERBO_ART1.search(texto_completo)
     
     if not match:
         return {"status": "OK", "detalhe": "Art. 1º não localizado para análise de verbo."}
@@ -150,7 +158,6 @@ def auditar_verbo_primeiro_artigo(texto_completo):
     verbos_validos = list(correcoes.values()) + ["Fica", "Torna"]
     
     if palavra_encontrada not in verbos_validos:
-        
         pass
 
     return {"status": "OK", "detalhe": "Verbo do Art. 1º correto."}
@@ -162,7 +169,7 @@ def auditar_fecho_vigencia(texto_completo):
 
 def auditar_assinatura(texto_completo):
    
-    match_anexo = re.search(r'\n\s*ANEXO', texto_completo, re.IGNORECASE)
+    match_anexo = REGEX_ANEXO_ASSINATURA.search(texto_completo)
     
     texto = texto_completo[:match_anexo.start()] if match_anexo else texto_completo
     

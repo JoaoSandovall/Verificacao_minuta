@@ -1,16 +1,20 @@
+import os
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from core.auditor import processar_minuta
 from core.file_parser import processar_arquivo_bytes
+
 import uvicorn
 
 app = FastAPI(title="Auditor de Minutas API")
 
+origens_permitidas = os.getenv("CORS_ALLOWED_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origens_permitidas,
     allow_methods=["*"],
     allow_headers=["*"]
 )

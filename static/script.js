@@ -179,7 +179,7 @@ function renderizarResultado(data) {
 
     if (contaCorrigiveis > 0 && btnCorrigirTudo) {
         btnCorrigirTudo.style.display = "inline-flex";
-        btnCorrigirTudo.innerText = `✔️ Corrigir ${contaCorrigiveis} erros de parágrafo/artigo`;
+        btnCorrigirTudo.innerText = `✔️ Corrigir ${contaCorrigiveis} erros`;
     }
 }
 
@@ -213,39 +213,36 @@ function corrigirTudoAutomaticamente() {
     }
 
     const textarea = document.getElementById('input-texto');
-    
-    let texto = textarea.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n'); 
-    
+    let texto = textarea.value; 
     let correcoesAplicadas = 0;
 
-    const errosCorrigiveis = ultimosDados.erros.filter(e => e.correcao && e.correcao.span);
-
-    errosCorrigiveis.sort((a, b) => b.correcao.span[0] - a.correcao.span[0]);
+    const errosCorrigiveis = ultimosDados.erros.filter(e => e.correcao && e.correcao.original);
 
     errosCorrigiveis.forEach(erro => {
-        const [inicio, fim] = erro.correcao.span;
+        const original = erro.correcao.original;
         const novoTexto = erro.correcao.novo;
         
-        const textoOriginalNoLugar = texto.substring(inicio, fim);
-    
-        console.log(`[Correção] Regra: ${erro.regra}`);
-        console.log(`Expected (Py): "${erro.correcao.original}"`);
-        console.log(`Found    (JS): "${textoOriginalNoLugar}"`);
+        console.log(`[Correção Automática] Tentando regra: ${erro.regra}`);
 
-        if (textoOriginalNoLugar.trim() === erro.correcao.original.trim()) {
-            texto = texto.slice(0, inicio) + novoTexto + texto.slice(fim);
+        if (texto.includes(original)) {
+            texto = texto.replace(original, novoTexto);
             correcoesAplicadas++;
         } else {
-            console.warn(">>> SALTOU: O texto local não bate com o original reportado pelo servidor. Índices desalinhados.");
+            console.warn(`>>> SALTOU: Texto exato não encontrado no documento. Original procurado: "${original}"`);
         }
     });
 
     if (correcoesAplicadas > 0) {
         textarea.value = texto;
         analisarTexto();
-        mostrarToast(`✔️ Sucesso! ${correcoesAplicadas} correções aplicadas.`);
+        
+        if (typeof mostrarToast === "function") {
+            mostrarToast(`✔️ Sucesso! ${correcoesAplicadas} correções aplicadas.`);
+        } else {
+            alert(`Sucesso! ${correcoesAplicadas} correções aplicadas.`);
+        }
     } else {
-        alert("Não foi possível aplicar as correções...");
+        alert("Não foi possível aplicar as correções automáticas. O texto não corresponde ao que foi analisado.");
     }
 }
 

@@ -1,13 +1,22 @@
 import re
 from core.utils import _roman_to_int
 
+REGEX_ARTIGOS = re.compile(r'^(\s*)Art\.\s*(\d+)([\. \tº°ᵒ]*)', re.MULTILINE)
+REGEX_PARAGRAFO_NUM = re.compile(r'^(\s*)§\s+(\d+)([\. \tº°ᵒ]*)', re.MULTILINE)
+REGEX_PARAGRAFO_UNICO = re.compile(r'^(\s*)Parágrafo\s+único\.([ \t]*)', re.MULTILINE | re.IGNORECASE)
+REGEX_DATA = re.compile(r"\b0[1-9]\s+de\s+(janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)", re.IGNORECASE)
+REGEX_SIGLA_PARENTESES = re.compile(r"(\()([A-Z]{3,})(\))")
+REGEX_SIGLA_HIFEN = re.compile(r"(\s+-\s*)([A-Z]{3,})\b")
+REGEX_PONTUACAO_INCISOS = re.compile(r'(^[ \t]*[IVXLCDM]+\s*[\-–—].*?)(?=\n\s*(?:[IVXLCDM]+\s*[\-–—]|Art\.|§|CAPÍTULO|Seção|Parágrafo|ANEXO)|$)', re.MULTILINE | re.DOTALL)
+REGEX_SEQUENCIA_INCISOS = re.compile(r'(?:^|[\n\r;])\s*([IVXLCDM]+\s*[\-–—])', re.MULTILINE)
+REGEX_ALINEAS = re.compile(r'(^\s*[a-z]\).*?)(?=\n\s*(?:[a-z]\)|[IVXLCDM]+\s*[\-–—]|Art\.|§|CAPÍTULO)|$)', re.MULTILINE | re.DOTALL)
+REGEX_ORDINAL = re.compile(r'(\S*[°ᵒ]\S*)')
+
 def auditar_formatacao_artigos(texto_completo):
     
     erros = []
     
-    padrao = re.compile(r'^(\s*)Art\.\s*(\d+)([\. \tº°ᵒ]*)', re.MULTILINE)
-    
-    matches = list(padrao.finditer(texto_completo))
+    matches = list(REGEX_ARTIGOS.finditer(texto_completo))
     
     for match in matches:
         indentacao = match.group(1) 
@@ -60,9 +69,7 @@ def auditar_formatacao_paragrafo(texto_completo):
     
     erros = []
     
-    padrao_num = re.compile(r'^(\s*)§\s+(\d+)([\. \tº°ᵒ]*)', re.MULTILINE)
-    
-    for match in padrao_num.finditer(texto_completo):
+    for match in REGEX_PARAGRAFO_NUM.finditer(texto_completo):
         indentacao = match.group(1)
         numero = int(match.group(2))
         sujeira = match.group(3)
@@ -104,11 +111,9 @@ def auditar_formatacao_paragrafo(texto_completo):
                 "sugestao": correcao,
                 "span": match.span(), 
                 "tipo": "fixable"
-            })
-
-    padrao_unico = re.compile(r'^(\s*)Parágrafo\s+único\.([ \t]*)', re.MULTILINE | re.IGNORECASE)
+            })    
     
-    for match in padrao_unico.finditer(texto_completo):
+    for match in REGEX_PARAGRAFO_UNICO.finditer(texto_completo):
         indentacao = match.group(1)
         espacos_pos = match.group(2)
         texto_capturado = match.group(0)
@@ -127,9 +132,8 @@ def auditar_formatacao_paragrafo(texto_completo):
 
 def auditar_data(texto_completo):
     erros = []
-    regex_data = re.compile(r"\b0[1-9]\s+de\s+(janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)", re.IGNORECASE)
     
-    for match in regex_data.finditer(texto_completo):
+    for match in REGEX_DATA.finditer(texto_completo):
         texto_errado = match.group(0)
         erros.append({
             "mensagem": "Não se deve usar zero à esquerda em datas por extenso.",
@@ -146,10 +150,8 @@ def auditar_uso_siglas(texto_completo):
     
     erros = []
     
-    regex_parenteses = re.compile(r"(\()([A-Z]{3,})(\))") 
-    
-    for match in regex_parenteses.finditer(texto_completo):
-        sigla = match.group(2) 
+    for match in REGEX_SIGLA_PARENTESES.finditer(texto_completo):
+        sigla = match.group(2)
         
         if re.fullmatch(r"[IVXLCDM]+", sigla): 
             continue
@@ -160,11 +162,9 @@ def auditar_uso_siglas(texto_completo):
             "span": match.span(),
             "tipo": "highlight"
         })
-
-    regex_hifen = re.compile(r"(\s+-\s*)([A-Z]{3,})\b")
     
-    for match in regex_hifen.finditer(texto_completo):
-        sigla = match.group(2)            
+    for match in REGEX_SIGLA_HIFEN.finditer(texto_completo):
+        sigla = match.group(2)
         
         if re.fullmatch(r"[IVXLCDM]+", sigla): 
             continue
@@ -185,9 +185,7 @@ def auditar_pontuacao_incisos(texto_completo):
     
     erros = []
     
-    padrao = re.compile(r'(^[ \t]*[IVXLCDM]+\s*[\-–—].*?)(?=\n\s*(?:[IVXLCDM]+\s*[\-–—]|Art\.|§|CAPÍTULO|Seção|Parágrafo|ANEXO)|$)', re.MULTILINE | re.DOTALL)
-    
-    matches = list(padrao.finditer(texto_completo))
+    matches = list(REGEX_PONTUACAO_INCISOS.finditer(texto_completo))
     
     if not matches: return {"status": "OK", "detalhe": "Nenhum inciso."}
     
@@ -234,9 +232,7 @@ def auditar_sequencia_incisos(texto_completo):
 
     erros = []
     
-    padrao = re.compile(r'(?:^|[\n\r;])\s*([IVXLCDM]+\s*[\-–—])', re.MULTILINE)
-    
-    matches = list(padrao.finditer(texto_completo))
+    matches = list(REGEX_SEQUENCIA_INCISOS.finditer(texto_completo))
     
     if not matches: return {"status": "OK", "detalhe": "Nenhum inciso."}
     
@@ -295,9 +291,7 @@ def auditar_formatacao_alineas(texto_completo):
 
     erros = []
     
-    padrao = re.compile(r'(^\s*[a-z]\).*?)(?=\n\s*(?:[a-z]\)|[IVXLCDM]+\s*[\-–—]|Art\.|§|CAPÍTULO)|$)', re.MULTILINE | re.DOTALL)
-    
-    matches = list(padrao.finditer(texto_completo))
+    matches = list(REGEX_ALINEAS.finditer(texto_completo))
     
     if not matches: return {"status": "OK", "detalhe": "Nenhuma alínea."}
     
@@ -359,15 +353,11 @@ def auditar_formatacao_alineas(texto_completo):
 
 def auditar_simbolo_ordinal(texto_completo):
     erros = []
-
-    padrao = re.compile(r'(\S*[°ᵒ]\S*)')
     
-    matches = list(padrao.finditer(texto_completo))
+    matches = list(REGEX_ORDINAL.finditer(texto_completo))
     
     for match in matches:
         texto_errado = match.group(1)
-        
-        texto_corrigido = texto_errado.replace('°', 'º').replace('ᵒ', 'º')
         
         erros.append({
             "mensagem": "Símbolo de pontuação incorreto. Utilize o indicador ordinal (º) ao invés do símbolo de grau (°) ou letra (ᵒ).",
