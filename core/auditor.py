@@ -1,7 +1,7 @@
 import re
 import html
 from core import obter_regras, obter_regras_anexo 
-from core.regras.anexo import auditar_anexo 
+from core.regras.anexo import auditar_anexo
 
 def substituir_por_espacos(match):
     return " " * len(match.group(0))
@@ -11,28 +11,41 @@ def substituir_prefixo_minuta(match):
     inicio_palavra = match.start(2) - match.start(0)
     return (" " * inicio_palavra) + palavra_chave
 
-def executar_auditoria(texto_para_auditar, regras_dict):
-    
+def executar_auditoria(texto_para_auditar: str, regras_dict: dict) -> list:
+    from core.models import ResultadoRegra
     resultados = []
     
     if not texto_para_auditar: 
         return []
     
     for nome_regra, funcao_auditoria in regras_dict.items():
-    
-        if nome_regra == "Anexo (Identificação)": continue
+        if nome_regra == "Anexo (Identificação)": 
+            continue
         try:
-            resultado = funcao_auditoria(texto_para_auditar)
-            if isinstance(resultado, dict):
-                status = resultado.get("status", "OK")
-                detalhes = resultado.get("detalhe", [])
+            resultado_cru = funcao_auditoria(texto_para_auditar)
+            
+            if isinstance(resultado_cru, dict):
+                modelo = ResultadoRegra.model_validate(resultado_cru)
+                status = modelo.status
+                
+                if isinstance(modelo.detalhe, list):
+                    detalhes = [
+                        item.model_dump(exclude_none=True) if hasattr(item, "model_dump") else item 
+                        for item in modelo.detalhe
+                    ]
+                else:
+                    detalhes = modelo.detalhe
             else:
-                status = "OK"; detalhes = []
+                status = "OK"
+                detalhes = []
+                
             if status in ["FALHA", "ALERTA"]:
-                if not isinstance(detalhes, list): detalhes = [detalhes]
+                if not isinstance(detalhes, list): 
+                    detalhes = [detalhes]
                 resultados.append((nome_regra, detalhes, status))
         except Exception as e:
-            resultados.append((nome_regra, [f"Erro: {e}"], "FALHA"))
+            resultados.append((nome_regra, [f"Erro interno na regra: {e}"], "FALHA"))
+            
     return resultados
 
 def gerar_html_anotado(texto_original, lista_erros_com_contexto):

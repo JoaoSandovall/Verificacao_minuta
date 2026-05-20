@@ -2,6 +2,6 @@ fastapi
 uvicorn
 pydantic
 python-docx
-PyPDF2
+pdfplumber
 pandas
 python-multipart

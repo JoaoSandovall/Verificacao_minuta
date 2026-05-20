@@ -3,10 +3,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from core.auditor import processar_minuta
+from core.file_parser import processar_arquivo_bytes
 import uvicorn
-import io
-import docx
-import PyPDF2
 
 app = FastAPI(title="Auditor de Minutas API")
 
@@ -32,30 +30,18 @@ async def auditar_minuta_arquivo(arquivo: UploadFile = File(...)):
     
     extensao = arquivo.filename.split('.')[-1].lower()
     conteudo_bytes = await arquivo.read()
-    texto_extraido = ""
 
     try:
-        if extensao == 'docx':
-            doc = docx.Document(io.BytesIO(conteudo_bytes))
-            texto_extraido = "\n".join([paragrafo.text for paragrafo in doc.paragraphs])
-        
-        elif extensao == 'pdf':
-            leitor_pdf = PyPDF2.PdfReader(io.BytesIO(conteudo_bytes))
-            for pagina in leitor_pdf.pages:
-                texto_pagina = pagina.extract_text()
-                if texto_pagina:
-                    texto_extraido += texto_pagina + "\n"
-        else:
-            raise HTTPException(status_code=400, detail="Formato não suportado. Envie .docx ou .pdf")
-            
+        texto_extraido = processar_arquivo_bytes(conteudo_bytes, extensao)
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao processar arquivo: {str(e)}")
 
     if not texto_extraido.strip():
-        raise HTTPException(status_code=400, detail="Não foi possível extrair texto do arquivo (pode ser um PDF escaneado como imagem).")
+        raise HTTPException(status_code=400, detail="Não foi possível extrair texto do arquivo.")
 
     resultado = processar_minuta(texto_extraido)
-    
     resultado["texto_extraido"] = texto_extraido 
     return resultado
 
