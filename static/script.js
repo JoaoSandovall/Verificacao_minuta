@@ -24,6 +24,7 @@ function voltarEditor() {
     document.getElementById('grupo-resolucao').style.display = "none";
     document.getElementById('grupo-anexo').style.display = "none";
     document.getElementById('msg-sucesso').style.display = "none";
+    document.getElementById('btn-baixar').style.display = "none";
 
     const btnMagic = document.getElementById('btn-corrigir-tudo');
     if (btnMagic) btnMagic.style.display = "none";
@@ -104,6 +105,7 @@ async function analisarTexto() {
 function renderizarResultado(data) {
     document.getElementById('tipo-documento-badge').innerText = "Tipo: " + data.tipo_documento;
     document.getElementById('documento-renderizado').innerHTML = data.html;
+    document.getElementById('btn-baixar').style.display = "inline-flex";
 
     const listaRes = document.getElementById('erros-resolucao-lista');
     const listaAnx = document.getElementById('erros-anexo-lista');
@@ -198,8 +200,9 @@ function aplicarCorrecao(original, novo) {
         const textoNovo = textoAtual.replace(original, novo);
         textarea.value = textoNovo;
         analisarTexto();
+        mostrarToast("✨ Correção aplicada com sucesso!");
     } else {
-        alert("Não foi possível encontrar o trecho original. Talvez já tenha sido corrigido.");
+        alert("Não foi possível encontrar o trecho original...");
     }
 }
 
@@ -240,9 +243,9 @@ function corrigirTudoAutomaticamente() {
     if (correcoesAplicadas > 0) {
         textarea.value = texto;
         analisarTexto();
-        alert(`Sucesso! ${correcoesAplicadas} correções aplicadas.`);
+        mostrarToast(`✔️ Sucesso! ${correcoesAplicadas} correções aplicadas.`);
     } else {
-        alert("Não foi possível aplicar as correções. O texto pode ter sido alterado manualmente após a análise ou há um desalinhamento de índices. Tente clicar em 'Analisar' novamente antes de corrigir.");
+        alert("Não foi possível aplicar as correções...");
     }
 }
 
@@ -257,4 +260,33 @@ function atualizarNomeArquivo() {
     } else {
         nomeArquivoDisplay.innerHTML = "Clique aqui para selecionar um arquivo (.pdf ou .docx)";
     }
+}
+
+function mostrarToast(mensagem) {
+    const toast = document.getElementById("toast");
+    toast.innerText = mensagem;
+    toast.classList.add("mostrar");
+    
+    setTimeout(() => {
+        toast.classList.remove("mostrar");
+    }, 3000);
+}
+
+function baixarDocumento() {
+    const texto = document.getElementById('input-texto').value;
+    if (!texto) {
+        mostrarToast("Não há texto para baixar.");
+        return;
+    }
+    
+    const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'Minuta_Corrigida.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+    
+    mostrarToast("📥 Download iniciado!");
 }
