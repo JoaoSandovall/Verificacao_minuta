@@ -96,25 +96,25 @@ def auditar_ementa(texto):
     return {"status": "OK", "detalhe": "Ementa válida."}
 
 def verificar_fecho_preambulo(texto_completo):
-    match_fecho = re.search(r"(resolveu?)\s*:", texto_completo, re.IGNORECASE)
+    
+    match_fecho = re.search(r"(?:o\s+colegiado\s+)?resolveu?\s*:", texto_completo, re.IGNORECASE)
     
     erros = []
     
     if match_fecho:
-        verbo_encontrado = match_fecho.group(1)
-        texto_completo_match = match_fecho.group(0)
+        texto_encontrado = match_fecho.group(0)
         
-        if verbo_encontrado != "resolve":
+        if texto_encontrado != "o Colegiado resolve:":
             erros.append({
-                "mensagem": "O fecho deve ser apenas 'resolve:' (em minúsculo).",
-                "original": texto_completo_match,
+                "mensagem": "O fecho do preâmbulo deve ser exatamente 'o Colegiado resolve:'.",
+                "original": texto_encontrado,
                 "span": match_fecho.span(),
                 "tipo": "highlight"
             })
             
     else:
         erros.append({
-            "mensagem": "Fecho 'resolve:' não encontrado no final do preâmbulo.", 
+            "mensagem": "Fecho 'o Colegiado resolve:' não encontrado no final do preâmbulo.", 
             "original": texto_completo[:50], 
             "tipo": "alert"
         })

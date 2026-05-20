@@ -243,7 +243,7 @@ def auditar_sequencia_incisos(texto_completo):
     expected = 1
     
     for i, match in enumerate(matches):
-        raw_text = match.group(1) # Ex: "I -"
+        raw_text = match.group(1)
         texto_limpo = raw_text.strip().replace('-', '').replace('–', '').replace('—', '').strip()
         
         try:
